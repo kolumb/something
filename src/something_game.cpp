@@ -213,11 +213,40 @@ void Game::update(float dt)
             if (enemy.state == Entity_State::Alive) {
                 if (rect_contains_vec2(lock_abs, enemy.pos)) {
                     if (grid.a_sees_b(enemy.pos, player.pos)) {
+
+                        if(!enemy.knows_about_player) {
+                            enemy.knows_about_player = true;
+                            for (size_t j = ENEMY_ENTITY_INDEX_OFFSET; j < ENTITIES_COUNT; ++j) {
+                                auto &enemy_in_room = entities[j];
+                                if (enemy_in_room.state == Entity_State::Alive) {
+                                    if (rect_contains_vec2(lock_abs, enemy_in_room.pos)) {
+                                        enemy_in_room.knows_about_player = true;
+                                    }
+                                }
+                            }
+                        }
                         enemy.stop();
                         enemy.point_gun_at(player.pos);
                         entity_shoot({i});
                     } else {
                         auto enemy_tile = grid.abs_to_tile_coord(enemy.pos);
+                        auto current_bfs_value = grid.bfs_trace[enemy_tile.y - lock->y][enemy_tile.x - lock->x];
+
+                        if(!enemy.knows_about_player) {
+                            if(current_bfs_value > DETECTION_RANGE) {
+                                continue;
+                            } else {
+                                for (size_t j = ENEMY_ENTITY_INDEX_OFFSET; j < ENTITIES_COUNT; ++j) {
+                                    auto &enemy_in_room = entities[j];
+                                    if (enemy_in_room.state == Entity_State::Alive) {
+                                        if (rect_contains_vec2(lock_abs, enemy_in_room.pos)) {
+                                            enemy_in_room.knows_about_player = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         auto next = grid.next_in_bfs(enemy_tile, lock);
                         if (next.has_value) {
                             auto d = next.unwrap - enemy_tile;

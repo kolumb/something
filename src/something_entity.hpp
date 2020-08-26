@@ -52,6 +52,7 @@ struct Entity
     SDL_Color flash_color;
     float flash_alpha;
     Direction walking_direction;
+    bool knows_about_player;
 
     Frame_Animat idle;
     Frame_Animat walking;
