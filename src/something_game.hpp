@@ -35,6 +35,7 @@ struct Index
 
 struct Entity_Index: public Index<Entity_Index> {};
 struct Projectile_Index: public Index<Projectile_Index> {};
+struct Exploded_Tile_Index: public Index<Exploded_Tile_Index> {};
 
 enum class Projectile_State
 {
@@ -65,9 +66,14 @@ const size_t ITEMS_COUNT = 69;
 const size_t CAMERA_LOCKS_CAPACITY = 200;
 const size_t ROOM_ROW_COUNT = 8;
 
-// TODO(#136): camera anchors in the centers of the "rooms"
-// TODO(#137): highlight areas to emulate "rooms"
-// TODO(#138): reimplement back the enemy AI
+const float EXPLOSION_POWER = 3.0f;
+const float MAX_EXPLOSION_IMPULSE = 15.0f;
+const int EXPLOSION_RADIUS_IN_TILES = 3;
+const float EXPLOSION_RADIUS = (float) EXPLOSION_RADIUS_IN_TILES * TILE_SIZE;
+const float EXPLOSION_RADIUS_SQR = EXPLOSION_RADIUS * EXPLOSION_RADIUS;
+const float EXPLOSION_COOLDOWN_RADIUS = EXPLOSION_RADIUS_SQR - TILE_SIZE;
+const size_t EXPLODED_TILES_COUNT = 400;
+
 struct Game
 {
     bool quit;
@@ -104,6 +110,7 @@ struct Game
     Item items[ITEMS_COUNT];
 
     Tile_Grid grid;
+    Exploded_Tile exploded_tiles[EXPLODED_TILES_COUNT];
 
     Recti camera_locks[CAMERA_LOCKS_CAPACITY];
     size_t camera_locks_count;
@@ -122,6 +129,7 @@ struct Game
     void entity_jump(Entity_Index entity_index);
     void entity_resolve_collision(Entity_Index entity_index);
     void spawn_enemy_at(Vec2f pos);
+    void exploded_tile_check_for_collision(Exploded_Tile_Index exploded_tile_index);
 
     // Projectiles of the Game
     void spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter);
