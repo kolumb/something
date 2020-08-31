@@ -1,3 +1,5 @@
+#include "something_fmw.hpp"
+
 const int SIMULATION_FPS = 60;
 const float SIMULATION_DELTA_TIME = 1.0f / SIMULATION_FPS;
 
@@ -100,6 +102,8 @@ int main(int argc, char *argv[])
             game.popup.notify(FONT_FAILURE_COLOR, "%s:%d: %s", CONFIG_VARS_FILE_PATH, result.line, result.message);
         }
     }
+
+    auto fmw = fmw_init(CONFIG_VARS_FILE_PATH);
 #endif // SOMETHING_RELEASE
 
     static_assert(DEBUG_TOOLBAR_COUNT <= TOOLBAR_BUTTONS_CAPACITY);
@@ -163,6 +167,7 @@ int main(int argc, char *argv[])
     while (!game.quit) {
         Uint32 curr_ticks = SDL_GetTicks();
         float elapsed_sec = (float) (curr_ticks - prev_ticks) / 1000.0f;
+
         prev_ticks = curr_ticks;
         lag_sec += elapsed_sec;
         float instant_fps = 1.0f / elapsed_sec;
@@ -186,6 +191,18 @@ int main(int argc, char *argv[])
 
             game.handle_event(&event);
         }
+
+#ifndef SOMETHING_RELEASE
+        if (fmw_poll(fmw)) {
+            auto result = reload_config_file(CONFIG_VARS_FILE_PATH);
+            if (result.is_error) {
+                println(stderr, CONFIG_VARS_FILE_PATH, ":", result.line, ": ", result.message);
+                game.popup.notify(FONT_FAILURE_COLOR, "%s:%d: %s", CONFIG_VARS_FILE_PATH, result.line, result.message);
+            } else {
+                game.popup.notify(FONT_SUCCESS_COLOR, "Reloaded config file\n\n%s", CONFIG_VARS_FILE_PATH);
+            }
+        }
+#endif // SOMETHING_RELEASE
         //// HANDLE INPUT END //////////////////////////////
 
         //// UPDATE STATE //////////////////////////////

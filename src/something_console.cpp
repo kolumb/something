@@ -1,6 +1,9 @@
 #include "something_game.hpp"
 #include "something_console.hpp"
 
+// TODO(#181): console does not support history
+// TODO(#182): console does not support scrolling
+
 Console::Selection Console::get_selection() const
 {
     Selection result = {};
@@ -100,19 +103,6 @@ void Console::toggle()
         SDL_StartTextInput();
     } else {
         SDL_StopTextInput();
-    }
-}
-
-void Console::println(const char *buffer, size_t buffer_size)
-{
-    const size_t index = (begin + count) % CONSOLE_ROWS;
-    rows_count[index] = min(buffer_size, CONSOLE_COLUMNS);
-    memcpy(rows[index], buffer, rows_count[index]);
-
-    if (count < (int) CONSOLE_ROWS) {
-        count += 1;
-    } else {
-        begin = (begin + 1) % CONSOLE_ROWS;
     }
 }
 
@@ -218,10 +208,7 @@ void Console::start_autocompletion()
 
 void Console::handle_event(SDL_Event *event, Game *game)
 {
-    // TODO(#158): Backtick event bleeds into the Console
     if (enabled) {
-        // TODO(#146): No support for delete or backspace in console
-        // TODO(#159): Console does not integrate with the OS clipboard
         if (popup_enabled) {
             switch (event->type) {
             case SDL_KEYDOWN: {
@@ -298,26 +285,26 @@ void Console::handle_event(SDL_Event *event, Game *game)
                 } break;
 
                 case SDLK_RETURN: {
-                    // TODO(#166): Console does not support autocompletion
-                    String_View command_expr = {edit_field_size, edit_field};
-                    const auto command_name = command_expr.chop_word();
+                    String_View command_expr = String_View {edit_field_size, edit_field}.trim();
 
-                    println(edit_field, edit_field_size);
+                    this->println(String_View {edit_field_size, edit_field});
                     edit_field_size = 0;
                     edit_field_cursor = 0;
                     edit_field_selection_begin = 0;
 
-                    bool command_found = false;
-                    for (size_t i = 0; !command_found && i < commands_count; ++i) {
-                        if (commands[i].name == command_name) {
-                            commands[i].run(game, command_expr);
-                            command_found = true;
+                    if (command_expr.count > 0) {
+                        bool command_found = false;
+                        const auto command_name = command_expr.chop_word();
+                        for (size_t i = 0; !command_found && i < commands_count; ++i) {
+                            if (commands[i].name == command_name) {
+                                commands[i].run(game, command_expr);
+                                command_found = true;
+                            }
                         }
-                    }
 
-                    if (!command_found) {
-                        const char *message = "Command not found";
-                        println(message, strlen(message));
+                        if (!command_found) {
+                            this->println("Command `", command_name, "` not found");
+                        }
                     }
                 } break;
                 }
