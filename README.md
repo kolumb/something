@@ -31,4 +31,4 @@ $ emsdk_env
 $ build
 ```
 ### Run
-Host on http-server.
+Host folder on http-server.
