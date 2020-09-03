@@ -9,3 +9,4 @@ config_types.hpp
 *.dSYM
 index.js
 index.data
+index.wasm
