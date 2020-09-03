@@ -11,6 +11,102 @@ void print1(FILE *stream, Vec2<T> v)
 
 Game game = {};
 
+struct context
+{
+    SDL_Renderer *renderer;
+    size_t *fps;
+    Uint32 *prev_ticks;
+    size_t *frames_of_current_second;
+    float *next_sec;
+    float *lag_sec;
+    Fmw *fmw;
+};
+void mainloop (void *arg) {
+    context *ctx = static_cast<context*>(arg);
+    SDL_Renderer *renderer = ctx->renderer;
+
+    Uint32 curr_ticks = SDL_GetTicks();
+    // HACK: because SDL_GetTicks grows by 4 ms instead of 16 ms for some reson.
+    float elapsed_sec = (float) 16.667f / 1000.0f;
+
+    *ctx->frames_of_current_second += 1;
+    *ctx->next_sec += elapsed_sec;
+
+    if (*ctx->next_sec >= 1) {
+        *ctx->fps = *ctx->frames_of_current_second;
+        *ctx->next_sec -= 1.0f;
+        *ctx->frames_of_current_second = 0;
+    }
+
+    *ctx->prev_ticks = curr_ticks;
+    *ctx->lag_sec += elapsed_sec;
+
+    //// HANDLE INPUT //////////////////////////////
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+        case SDL_KEYDOWN: {
+            switch (event.key.keysym.sym) {
+            case SDLK_x: {
+                if (game.step_debug) {
+                    game.update(SIMULATION_DELTA_TIME);
+                }
+            } break;
+            }
+        } break;
+        }
+
+        game.handle_event(&event);
+    }
+
+#ifndef SOMETHING_RELEASE
+    if (fmw_poll(ctx->fmw)) {
+        auto result = reload_config_file(CONFIG_VARS_FILE_PATH);
+        if (result.is_error) {
+            println(stderr, CONFIG_VARS_FILE_PATH, ":", result.line, ": ", result.message);
+            game.popup.notify(FONT_FAILURE_COLOR, "%s:%d: %s", CONFIG_VARS_FILE_PATH, result.line, result.message);
+        } else {
+            game.popup.notify(FONT_SUCCESS_COLOR, "Reloaded config file\n\n%s", CONFIG_VARS_FILE_PATH);
+        }
+    }
+#endif // SOMETHING_RELEASE
+    //// HANDLE INPUT END //////////////////////////////
+
+    //// UPDATE STATE //////////////////////////////
+    if (!game.step_debug) {
+        while (*ctx->lag_sec >= SIMULATION_DELTA_TIME) {
+            game.update(SIMULATION_DELTA_TIME);
+            *ctx->lag_sec -= SIMULATION_DELTA_TIME;
+        }
+    }
+    //// UPDATE STATE END //////////////////////////////
+
+    //// RENDER //////////////////////////////
+    sec(SDL_SetRenderDrawColor(
+            renderer,
+            BACKGROUND_COLOR.r,
+            BACKGROUND_COLOR.g,
+            BACKGROUND_COLOR.b,
+            BACKGROUND_COLOR.a));
+    sec(SDL_RenderClear(renderer));
+    sec(SDL_SetRenderDrawColor(
+            renderer,
+            CANVAS_BACKGROUND_COLOR.r,
+            CANVAS_BACKGROUND_COLOR.g,
+            CANVAS_BACKGROUND_COLOR.b,
+            CANVAS_BACKGROUND_COLOR.a));
+    {
+        SDL_Rect canvas = {0, 0, (int) floorf(SCREEN_WIDTH), (int) floorf(SCREEN_HEIGHT)};
+        SDL_RenderFillRect(renderer, &canvas);
+    }
+    game.render(renderer);
+    if (game.debug) {
+        game.render_debug_overlay(renderer, ctx->fps);
+    }
+    SDL_RenderPresent(renderer);
+    //// RENDER END //////////////////////////////
+}
+
 int main(void)
 {
     sec(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
@@ -129,7 +225,7 @@ int main(void)
         0,
         &want,
         &have,
-        SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+        0);
     defer(SDL_CloseAudioDevice(dev));
     if (dev == 0) {
         println(stderr, "SDL pooped itself: Failed to open audio: ", SDL_GetError());
@@ -163,88 +259,19 @@ int main(void)
     float next_sec = 0;
     size_t frames_of_current_second = 0;
     size_t fps = 0;
-    while (!game.quit) {
-        Uint32 curr_ticks = SDL_GetTicks();
-        float elapsed_sec = (float) (curr_ticks - prev_ticks) / 1000.0f;
 
-        frames_of_current_second += 1;
-        next_sec += elapsed_sec;
+    context ctx;
+    ctx.renderer = renderer;
+    ctx.fps = &fps;
+    ctx.prev_ticks = &prev_ticks;
+    ctx.frames_of_current_second = &frames_of_current_second;
+    ctx.next_sec = &next_sec;
+    ctx.lag_sec = &lag_sec;
+    ctx.fmw = fmw;
 
-        if (next_sec >= 1) {
-            fps = frames_of_current_second;
-            next_sec -= 1.0f;
-            frames_of_current_second = 0;
-        }
-
-        prev_ticks = curr_ticks;
-        lag_sec += elapsed_sec;
-
-        //// HANDLE INPUT //////////////////////////////
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-            case SDL_KEYDOWN: {
-                switch (event.key.keysym.sym) {
-                case SDLK_x: {
-                    if (game.step_debug) {
-                        game.update(SIMULATION_DELTA_TIME);
-                    }
-                } break;
-                }
-            } break;
-            }
-
-            game.handle_event(&event);
-        }
-
-#ifndef SOMETHING_RELEASE
-        if (fmw_poll(fmw)) {
-            auto result = reload_config_file(CONFIG_VARS_FILE_PATH);
-            if (result.is_error) {
-                println(stderr, CONFIG_VARS_FILE_PATH, ":", result.line, ": ", result.message);
-                game.popup.notify(FONT_FAILURE_COLOR, "%s:%d: %s", CONFIG_VARS_FILE_PATH, result.line, result.message);
-            } else {
-                game.popup.notify(FONT_SUCCESS_COLOR, "Reloaded config file\n\n%s", CONFIG_VARS_FILE_PATH);
-            }
-        }
-#endif // SOMETHING_RELEASE
-        //// HANDLE INPUT END //////////////////////////////
-
-        //// UPDATE STATE //////////////////////////////
-        if (!game.step_debug) {
-            SDL_Delay(1);
-            while (lag_sec >= SIMULATION_DELTA_TIME) {
-                game.update(SIMULATION_DELTA_TIME);
-                lag_sec -= SIMULATION_DELTA_TIME;
-            }
-        }
-        //// UPDATE STATE END //////////////////////////////
-
-        //// RENDER //////////////////////////////
-        sec(SDL_SetRenderDrawColor(
-                renderer,
-                BACKGROUND_COLOR.r,
-                BACKGROUND_COLOR.g,
-                BACKGROUND_COLOR.b,
-                BACKGROUND_COLOR.a));
-        sec(SDL_RenderClear(renderer));
-        sec(SDL_SetRenderDrawColor(
-                renderer,
-                CANVAS_BACKGROUND_COLOR.r,
-                CANVAS_BACKGROUND_COLOR.g,
-                CANVAS_BACKGROUND_COLOR.b,
-                CANVAS_BACKGROUND_COLOR.a));
-        {
-            SDL_Rect canvas = {0, 0, (int) floorf(SCREEN_WIDTH), (int) floorf(SCREEN_HEIGHT)};
-            SDL_RenderFillRect(renderer, &canvas);
-        }
-        game.render(renderer);
-        if (game.debug) {
-            game.render_debug_overlay(renderer, fps);
-        }
-        SDL_RenderPresent(renderer);
-        //// RENDER END //////////////////////////////
-    }
+    const int simulate_infinite_loop = 1; // call the function repeatedly
+    const int fps_limit = -1; // call the function as fast as the browser wants to render (typically 60fps)
+    emscripten_set_main_loop_arg(mainloop, &ctx, fps_limit, simulate_infinite_loop);
 
     SDL_Quit();
 

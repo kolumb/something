@@ -7,3 +7,5 @@ baked_config.hpp
 config_types.hpp
 *.o
 *.dSYM
+index.js
+index.data

@@ -19,3 +19,15 @@ $ # Build
 $ make -B
 $ ./something.debug
 ```
+
+## WebAssembly build
+
+```console
+$ # Dependencies
+$ # [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+$ # Build
+$ emsdk_env
+$ build
+$ # Run
+$ host on any http-server
+```

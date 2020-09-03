@@ -10,7 +10,7 @@ void command_help(Game *game, String_View)
 
 void command_quit(Game *, String_View)
 {
-    exit(0);
+    emscripten_force_exit(0);
 }
 
 void command_reset(Game *game, String_View)

@@ -1,3 +1,4 @@
+#include <SDL_image.h>
 #include "./something_texture.hpp"
 
 void load_textures(SDL_Renderer *renderer)
@@ -65,22 +66,5 @@ SDL_Texture *load_texture_from_bmp_file(SDL_Renderer *renderer,
 
 SDL_Surface *load_png_file_as_surface(const char *image_filename)
 {
-    int width, height;
-    uint32_t *image_pixels = (uint32_t *) stbi_load(image_filename, &width, &height, NULL, 4);
-    if (image_pixels == NULL) {
-        println(stderr, "[ERROR] Could not load `", image_filename, "` as PNG");
-        abort();
-    }
-
-    SDL_Surface* image_surface =
-        sec(SDL_CreateRGBSurfaceFrom(image_pixels,
-                                     (int) width,
-                                     (int) height,
-                                     32,
-                                     (int) width * 4,
-                                     0x000000FF,
-                                     0x0000FF00,
-                                     0x00FF0000,
-                                     0xFF000000));
-    return image_surface;
+    return sec(IMG_Load(image_filename));
 }

@@ -4,12 +4,7 @@
 #include <cerrno>
 #include <cmath>
 #include <SDL.h>
-
-#ifdef SOMETHING_RELEASE
-#define STB_IMAGE_IMPLEMENTATION
-#endif
-#define STBI_ONLY_PNG
-#include "./stb_image.h"
+#include <emscripten.h>
 
 #include "aids.hpp"
 
