@@ -21,13 +21,14 @@ $ ./something.debug
 ```
 
 ## WebAssembly build
+### Dependencies
+[Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+TODO: baked_config.hpp needs to be generated using gcc
 
+### Build
 ```console
-$ # Dependencies
-$ # [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
-$ # Build
 $ emsdk_env
 $ build
-$ # Run
-$ host on any http-server
 ```
+### Run
+Host on http-server.
