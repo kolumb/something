@@ -28,7 +28,7 @@ TODO: baked_config.hpp needs to be generated using gcc
 ### Build
 ```console
 $ emsdk_env
-$ build
+$ ./build.sh
 ```
 ### Run
 Host folder on http-server.
