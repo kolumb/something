@@ -12,25 +12,21 @@ const char *projectile_state_as_cstr(Projectile_State state)
     return "";
 }
 
-// TODO(#25): Turn displayf into println style
+template <typename ... Types>
 void displayf(SDL_Renderer *renderer,
               Bitmap_Font *font,
-              SDL_Color color,
-              SDL_Color shadow_color,
+              RGBA color,
+              RGBA shadow_color,
               Vec2f p,
-              const char *format, ...)
+              Types... args)
 {
-    va_list args;
-    va_start(args, format);
-
     char text[256];
-    vsnprintf(text, sizeof(text), format, args);
+    String_Buffer sbuffer = {256, text, 0};
+    sprintln(&sbuffer, args...);
 
     auto font_size = vec2(FONT_DEBUG_SIZE, FONT_DEBUG_SIZE);
     font->render(renderer, p - vec2(2.0f, 2.0f), font_size, shadow_color, text);
     font->render(renderer, p, font_size, color, text);
-
-    va_end(args);
 }
 
 void Projectile::kill()
@@ -57,14 +53,16 @@ void Game::handle_event(SDL_Event *event)
 
 
 #ifndef SOMETHING_RELEASE
+        case SDLK_F2: {
+            fps_debug = !fps_debug;
+        } break;
+
+        case SDLK_F3: {
+            bfs_debug = !bfs_debug;
+        } break;
+
         case SDLK_F5: {
-            auto result = reload_config_file(CONFIG_VARS_FILE_PATH);
-            if (result.is_error) {
-                println(stderr, CONFIG_VARS_FILE_PATH, ":", result.line, ": ", result.message);
-                popup.notify(FONT_FAILURE_COLOR, "%s:%d: %s", CONFIG_VARS_FILE_PATH, result.line, result.message);
-            } else {
-                popup.notify(FONT_SUCCESS_COLOR, "Reloaded config file\n\n%s", CONFIG_VARS_FILE_PATH);
-            }
+            command_reload(this, ""_sv);
         } break;
 #endif  // SOMETHING_RELEASE
         }
@@ -84,9 +82,9 @@ void Game::handle_event(SDL_Event *event)
         grid.resolve_point_collision(&collision_probe);
 
         Vec2i tile = vec_cast<int>(mouse_position / TILE_SIZE);
-        switch (state) {
+        switch (draw_state) {
         case Debug_Draw_State::Create: {
-            grid.set_tile(tile, TILE_WALL);
+            grid.set_tile(tile, draw_tile);
         } break;
 
         case Debug_Draw_State::Delete: {
@@ -107,14 +105,21 @@ void Game::handle_event(SDL_Event *event)
 
                 if (!tracking_projectile.has_value) {
                     switch (debug_toolbar.active_button) {
-                    case DEBUG_TOOLBAR_TILES: {
+                    case DEBUG_TOOLBAR_TILES:
+                    case DEBUG_TOOLBAR_DESTROYABLE: {
+                        if (debug_toolbar.active_button == DEBUG_TOOLBAR_TILES) {
+                            draw_tile = TILE_WALL;
+                        } else {
+                            draw_tile = TILE_DESTROYABLE_0;
+                        }
+
                         Vec2i tile = vec_cast<int>(mouse_position / TILE_SIZE);
 
                         if (grid.get_tile(tile) == TILE_EMPTY) {
-                            state = Debug_Draw_State::Create;
-                            grid.set_tile(tile, TILE_WALL);
+                            draw_state = Debug_Draw_State::Create;
+                            grid.set_tile(tile, draw_tile);
                         } else {
-                            state = Debug_Draw_State::Delete;
+                            draw_state = Debug_Draw_State::Delete;
                             grid.set_tile(tile, TILE_EMPTY);
                         }
                     } break;
@@ -177,7 +182,7 @@ void Game::handle_event(SDL_Event *event)
     case SDL_MOUSEBUTTONUP: {
         switch (event->button.button) {
         case SDL_BUTTON_RIGHT: {
-            state = Debug_Draw_State::Idle;
+            draw_state = Debug_Draw_State::Idle;
         } break;
         }
     } break;
@@ -309,7 +314,7 @@ void Game::update(float dt)
 
     // Update All Entities //////////////////////////////
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
-        entities[i].update(dt, &mixer);
+        entities[i].update(dt, &mixer, &grid);
         entity_resolve_collision({i});
         entities[i].has_jumped = false;
     }
@@ -416,7 +421,9 @@ void Game::render(SDL_Renderer *renderer)
         }
     }
 
-    if (debug && lock) {
+    background.render(renderer, camera);
+
+    if (bfs_debug && lock) {
         grid.render_debug_bfs_overlay(
             renderer,
             &camera,
@@ -442,6 +449,10 @@ void Game::render(SDL_Renderer *renderer)
         if (exploded_tiles[i].state != Exploded_Tile_State::Ded) {
             exploded_tiles[i].render(renderer, camera);
         }
+    }
+    
+    if (fps_debug) {
+        render_fps_overlay(renderer);
     }
 
     popup.render(renderer);
@@ -500,7 +511,15 @@ void Game::entity_resolve_collision(Entity_Index entity_index)
                 Vec2f d = t1 - t0;
 
                 const int IMPACT_THRESHOLD = 5;
-                if (abs(d.y) >= IMPACT_THRESHOLD && !entity->has_jumped) entity->vel.y = 0;
+                if (abs(d.y) >= IMPACT_THRESHOLD && !entity->has_jumped) {
+                    if (fabsf(entity->vel.y) > LANDING_PARTICLE_BURST_THRESHOLD) {
+                        for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST; ++i) {
+                            entity->particles.push(rand_float_range(PARTICLE_JUMP_VEL_LOW, fabsf(entity->vel.y) * 0.25f));
+                        }
+                    }
+
+                    entity->vel.y = 0;
+                }
                 if (abs(d.x) >= IMPACT_THRESHOLD) entity->vel.x = 0;
 
                 entity->pos += d;
@@ -563,68 +582,68 @@ void Game::render_debug_overlay(SDL_Renderer *renderer, float fps)
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, PADDING),
-             "FPS: %.0f", fps);
+             "FPS: ", fps);
     displayf(renderer, &debug_font,
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, 50 + PADDING),
-             "Mouse Position: (%.4f, %.4f)",
-             mouse_position.x,
+             "Mouse Position: ",
+             mouse_position.x, " ",
              mouse_position.y);
     displayf(renderer, &debug_font,
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, 2 * 50 + PADDING),
-             "Collision Probe: (%.4f, %.4f)",
-             collision_probe.x,
+             "Collision Probe: ",
+             collision_probe.x, " ",
              collision_probe.y);
     displayf(renderer, &debug_font,
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, 3 * 50 + PADDING),
-             "Projectiles: %d",
+             "Projectiles: ",
              count_alive_projectiles());
     displayf(renderer, &debug_font,
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, 4 * 50 + PADDING),
-             "Player position: (%.4f, %.4f)",
-             entities[PLAYER_ENTITY_INDEX].pos.x,
+             "Player position: ",
+             entities[PLAYER_ENTITY_INDEX].pos.x, " ",
              entities[PLAYER_ENTITY_INDEX].pos.y);
     displayf(renderer, &debug_font,
              FONT_DEBUG_COLOR,
              FONT_SHADOW_COLOR,
              vec2(PADDING, 5 * 50 + PADDING),
-             "Player velocity: (%.4f, %.4f)",
-             entities[PLAYER_ENTITY_INDEX].vel.x,
+             "Player velocity: ",
+             entities[PLAYER_ENTITY_INDEX].vel.x, " ",
              entities[PLAYER_ENTITY_INDEX].vel.y);
 
     if (tracking_projectile.has_value) {
         auto projectile = projectiles[tracking_projectile.unwrap.unwrap];
         const float SECOND_COLUMN_OFFSET = 700.0f;
-        const SDL_Color TRACKING_DEBUG_COLOR = {255, 255, 150, 255};
+        const RGBA TRACKING_DEBUG_COLOR = sdl_to_rgba({255, 255, 150, 255});
         displayf(renderer, &debug_font,
                  TRACKING_DEBUG_COLOR,
                  FONT_SHADOW_COLOR,
                  vec2(PADDING + SECOND_COLUMN_OFFSET, PADDING),
-                 "State: %s", projectile_state_as_cstr(projectile.state));
+                 "State: ", projectile_state_as_cstr(projectile.state));
         displayf(renderer, &debug_font,
                  TRACKING_DEBUG_COLOR,
                  FONT_SHADOW_COLOR,
                  vec2(PADDING + SECOND_COLUMN_OFFSET, 50 + PADDING),
-                 "Position: (%.4f, %.4f)",
-                 projectile.pos.x, projectile.pos.y);
+                 "Position: ",
+                 projectile.pos.x, " ", projectile.pos.y);
         displayf(renderer, &debug_font,
                  TRACKING_DEBUG_COLOR,
                  FONT_SHADOW_COLOR,
                  vec2(PADDING + SECOND_COLUMN_OFFSET, 2 * 50 + PADDING),
-                 "Velocity: (%.4f, %.4f)",
-                 projectile.vel.x, projectile.vel.y);
+                 "Velocity: ",
+                 projectile.vel.x, " ", projectile.vel.y);
         displayf(renderer, &debug_font,
                  TRACKING_DEBUG_COLOR,
                  FONT_SHADOW_COLOR,
                  vec2(PADDING + SECOND_COLUMN_OFFSET, 3 * 50 + PADDING),
-                 "Shooter Index: %d",
+                 "Shooter Index: ",
                  projectile.shooter.unwrap);
     }
 
@@ -673,6 +692,25 @@ void Game::render_debug_overlay(SDL_Renderer *renderer, float fps)
     }
 
     debug_toolbar.render(renderer, debug_font);
+}
+
+void Game::render_fps_overlay(SDL_Renderer *renderer) {
+    const float PADDING = 20.0f;
+    const float SCALE = 5000.0f;
+    const float BAR_WIDTH = 2.0f;
+    for (size_t i = 0; i < FPS_BARS_COUNT; ++i) {
+        size_t j = (frame_delays_begin + i) % FPS_BARS_COUNT;
+        fill_rect(
+            renderer,
+            rect(
+                vec2(SCREEN_WIDTH - PADDING - (float) (FPS_BARS_COUNT - j) * BAR_WIDTH,
+                    SCREEN_HEIGHT - PADDING - frame_delays[j] * SCALE),
+                BAR_WIDTH,
+                frame_delays[j] * SCALE),
+                {   clamp(       frame_delays[j] * 60.0f - 1.0f, 0.0f, 1.0f),
+                    clamp(2.0f - frame_delays[j] * 60.0f       , 0.0f, 1.0f),
+                    0, (float) i / (float) FPS_BARS_COUNT});
+    }
 }
 
 int Game::count_alive_projectiles(void)
@@ -794,4 +832,24 @@ void Game::spawn_enemy_at(Vec2f pos)
             break;
         }
     }
+}
+
+int Game::get_rooms_count(void)
+{
+    int result = 0;
+    DIR *rooms_dir = opendir("./assets/rooms/");
+    if (rooms_dir == NULL) {
+        println(stderr, "Can't open asset folder: ./assets/rooms/");
+        abort();
+    }
+
+    for (struct dirent *d = readdir(rooms_dir);
+        d != NULL;
+        d = readdir(rooms_dir)) {
+        if (*d->d_name == '.') continue;
+        result++;
+    }
+
+    closedir(rooms_dir);
+    return result;
 }

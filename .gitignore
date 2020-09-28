@@ -6,5 +6,5 @@ TAGS
 baked_config.hpp
 config_types.hpp
 *.o
-*.exe
 *.dSYM
+*.exe
