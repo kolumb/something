@@ -26,11 +26,11 @@ stb_image.o: src/stb_image.h
 baked_config.hpp: config_baker ./assets/config.vars
 	"./config_baker" > baked_config.hpp
 
-config_baker: src/config_baker.cpp src/config_common.cpp config_types.hpp
+config_baker: src/config_baker.cpp src/config_common.cpp src/config_types.hpp
 	$(CXX) $(CXXFLAGS_DEBUG) -o config_baker src/config_baker.cpp $(LIBS)
 
 config_types.hpp: config_typer ./assets/config.vars
-	"./config_typer" ./assets/config.vars > config_types.hpp
+	"./config_typer" ./assets/config.vars > src/config_types.hpp
 
 config_typer: src/config_typer.cpp
 	$(CXX) $(CXXFLAGS_DEBUG) -o config_typer src/config_typer.cpp $(LIBS)

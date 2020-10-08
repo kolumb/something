@@ -10,7 +10,11 @@ void command_help(Game *game, String_View)
 
 void command_quit(Game *, String_View)
 {
+#ifndef __EMSCRIPTEN__
+    exit(0);
+#else
     emscripten_force_exit(0);
+#endif // __EMSCRIPTEN__
 }
 
 void command_reset(Game *game, String_View)

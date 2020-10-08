@@ -51,12 +51,14 @@ void Game::handle_event(SDL_Event *event)
             console.toggle();
         } break;
 
+#ifdef __EMSCRIPTEN__
         case SDLK_F11: {
             EM_ASM({
               document.documentElement.requestFullscreen();
               window.dispatchEvent(new Event('resize'));
             });
         } break;
+#endif // __EMSCRIPTEN__
 
 #ifndef SOMETHING_RELEASE
         case SDLK_F2: {

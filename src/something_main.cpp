@@ -39,7 +39,9 @@ struct context
     size_t *frames_of_current_second;
     float *next_sec;
     float *lag_sec;
+#ifndef SOMETHING_RELEASE
     Fmw *fmw;
+#endif // SOMETHING_RELEASE
 };
 void mainloop (void *arg) {
     context *ctx = static_cast<context*>(arg);
@@ -295,7 +297,6 @@ int main(int argc, char *argv[])
     float next_sec = 0;
     size_t frames_of_current_second = 0;
     size_t fps = 0;
-
     context ctx;
     ctx.renderer = renderer;
     ctx.fps = &fps;
@@ -303,11 +304,17 @@ int main(int argc, char *argv[])
     ctx.frames_of_current_second = &frames_of_current_second;
     ctx.next_sec = &next_sec;
     ctx.lag_sec = &lag_sec;
+#ifndef SOMETHING_RELEASE
     ctx.fmw = fmw;
+#endif // SOMETHING_RELEASE
 
+#ifdef __EMSCRIPTEN__
     const int simulate_infinite_loop = 1; // call the function repeatedly
     const int fps_limit = -1; // call the function as fast as the browser wants to render (typically 60fps)
     emscripten_set_main_loop_arg(mainloop, &ctx, fps_limit, simulate_infinite_loop);
+#else
+    while (!game.quit) mainloop(&ctx);
+#endif // __EMSCRIPTEN__
 
     SDL_Quit();
 

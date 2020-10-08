@@ -4,7 +4,7 @@ config_baker
 config_typer
 TAGS
 baked_config.hpp
-config_types.hpp
+src/config_types.hpp
 *.o
 *.dSYM
 index.js

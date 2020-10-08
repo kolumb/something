@@ -30,10 +30,16 @@ $ something.debug
 ## WebAssembly build
 ### Dependencies
 [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
-TODO: baked_config.hpp needs to be generated using gcc
 
-### Build
+### Windows build with MinGW
 ```console
+$ set __MINGW32__=1 && mingw32-make -B config_types.hpp && mingw32-make -B baked_config.hpp
+$ emsdk_env
+$ ./build.bat
+```
+### Build on UNIX-like system
+```console
+$ make -B config_types.hpp && make -B baked_config.hpp
 $ emsdk_env
 $ ./build.sh
 ```
