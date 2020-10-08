@@ -46,9 +46,7 @@ void mainloop (void *arg) {
     SDL_Renderer *renderer = ctx->renderer;
 
     Uint32 curr_ticks = SDL_GetTicks();
-    // HACK: because SDL_GetTicks grows by 4 ms instead of 16 ms for some reson.
-    // float elapsed_sec = (float) 16.667f / 1000.0f;
-    float elapsed_sec = (float) (curr_ticks - prev_ticks) / 1000.0f;
+    float elapsed_sec = (float) (curr_ticks - *ctx->prev_ticks) / 1000.0f;
     if(game.fps_debug) {
         game.frame_delays[game.frame_delays_begin] = elapsed_sec;
         game.frame_delays_begin = (game.frame_delays_begin + 1) % FPS_BARS_COUNT;
