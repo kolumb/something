@@ -4,6 +4,12 @@ template <typename T>
 struct Vec2
 {
     T x, y;
+
+    template <typename Function>
+    Vec2<T> map(Function f)
+    {
+        return {f(x), f(y)};
+    }
 };
 
 using Vec2f = Vec2<float>;
@@ -210,4 +216,15 @@ bool rects_overlap(Rect<T> a, Rect<T> b)
     const T b_y2 = b.y + b.h;
 
     return !((a_x2 < b_x1) || (a_y2 < b_y1) || (b_x2 < a_x1) || (b_y2 < a_y1));
+}
+
+Vec2f polar(float mag, float angle)
+{
+    return vec2(cosf(angle), sinf(angle)) * mag;
+}
+
+float rand_float_range(float low, float high)
+{
+    const auto r = (float)rand()/(float)(RAND_MAX);
+    return low + r * (high - low);
 }

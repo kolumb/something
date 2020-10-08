@@ -3,13 +3,33 @@
 const int SIMULATION_FPS = 60;
 const float SIMULATION_DELTA_TIME = 1.0f / SIMULATION_FPS;
 
-template <typename T>
-void print1(FILE *stream, Vec2<T> v)
-{
-    print(stream, '(', v.x, ',', v.y, ')');
-}
-
 Game game = {};
+
+Dynamic_Array<Dynamic_Array<char>> load_room_files_from_dir(const char *room_dir_path)
+{
+    Dynamic_Array<Dynamic_Array<char>> room_files = {};
+
+    DIR *rooms_dir = opendir(room_dir_path);
+    defer(closedir(rooms_dir));
+    if (rooms_dir == NULL) {
+        println(stderr, "Can't open asset folder: ", room_dir_path);
+        abort();
+    }
+
+    for (struct dirent *d = readdir(rooms_dir);
+         d != NULL;
+         d = readdir(rooms_dir))
+    {
+        if (*d->d_name == '.') continue;
+        Dynamic_Array<char> room_file = {};
+        room_file.concat(room_dir_path, strlen(room_dir_path));
+        room_file.concat(d->d_name, strlen(d->d_name));
+        room_file.push('\0');
+        room_files.push(room_file);
+    }
+
+    return room_files;
+}
 
 struct context
 {
@@ -27,7 +47,12 @@ void mainloop (void *arg) {
 
     Uint32 curr_ticks = SDL_GetTicks();
     // HACK: because SDL_GetTicks grows by 4 ms instead of 16 ms for some reson.
-    float elapsed_sec = (float) 16.667f / 1000.0f;
+    // float elapsed_sec = (float) 16.667f / 1000.0f;
+    float elapsed_sec = (float) (curr_ticks - prev_ticks) / 1000.0f;
+    if(game.fps_debug) {
+        game.frame_delays[game.frame_delays_begin] = elapsed_sec;
+        game.frame_delays_begin = (game.frame_delays_begin + 1) % FPS_BARS_COUNT;
+    }
 
     *ctx->frames_of_current_second += 1;
     *ctx->next_sec += elapsed_sec;
@@ -82,19 +107,21 @@ void mainloop (void *arg) {
     //// UPDATE STATE END //////////////////////////////
 
     //// RENDER //////////////////////////////
+    const SDL_Color background_color = rgba_to_sdl(BACKGROUND_COLOR);
     sec(SDL_SetRenderDrawColor(
             renderer,
-            BACKGROUND_COLOR.r,
-            BACKGROUND_COLOR.g,
-            BACKGROUND_COLOR.b,
-            BACKGROUND_COLOR.a));
+            background_color.r,
+            background_color.g,
+            background_color.b,
+            background_color.a));
     sec(SDL_RenderClear(renderer));
+    const SDL_Color canvas_background_color = rgba_to_sdl(CANVAS_BACKGROUND_COLOR);
     sec(SDL_SetRenderDrawColor(
             renderer,
-            CANVAS_BACKGROUND_COLOR.r,
-            CANVAS_BACKGROUND_COLOR.g,
-            CANVAS_BACKGROUND_COLOR.b,
-            CANVAS_BACKGROUND_COLOR.a));
+            canvas_background_color.r,
+            canvas_background_color.g,
+            canvas_background_color.b,
+            canvas_background_color.a));
     {
         SDL_Rect canvas = {0, 0, (int) floorf(SCREEN_WIDTH), (int) floorf(SCREEN_HEIGHT)};
         SDL_RenderFillRect(renderer, &canvas);
@@ -107,8 +134,11 @@ void mainloop (void *arg) {
     //// RENDER END //////////////////////////////
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void) argc;
+    (void) argv;
+
     sec(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
 
     SDL_Window *window =
@@ -129,7 +159,7 @@ int main(void)
                                  SCREEN_HEIGHT));
 
     // TODO(#8): replace fantasy_tiles.png with our own assets
-    size_t tileset_texture = texture_index_by_name("./assets/sprites/fantasy_tiles.png"_sv);
+    auto tileset_texture = texture_index_by_name("./assets/sprites/fantasy_tiles.png"_sv);
 
     load_textures(renderer);
     load_samples();
@@ -175,6 +205,10 @@ int main(void)
     };
     tile_defs[TILE_DESTROYABLE_3].bottom_texture = tile_defs[TILE_DESTROYABLE_3].top_texture;
 
+    game.background.layers[0] = sprite_from_texture_index(texture_index_by_name("./assets/sprites/parallax-forest-lights.png"_sv));
+    game.background.layers[1] = sprite_from_texture_index(texture_index_by_name("./assets/sprites/parallax-forest-middle-trees.png"_sv));
+    game.background.layers[2] = sprite_from_texture_index(texture_index_by_name("./assets/sprites/parallax-forest-front-trees.png"_sv));
+
     game.player_shoot_sample      = sample_s16_by_name("./assets/sounds/enemy_shoot-48000-decay.wav"_sv);
     game.entity_walking_animat    = frame_animat_by_name("./assets/animats/walking.txt"_sv);
     game.entity_idle_animat       = frame_animat_by_name("./assets/animats/idle.txt"_sv);
@@ -203,6 +237,8 @@ int main(void)
     game.debug_toolbar.buttons_count = DEBUG_TOOLBAR_COUNT;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_TILES].icon = tile_defs[TILE_WALL].top_texture;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_TILES].tooltip = "Edit walls"_sv;
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_DESTROYABLE].icon = tile_defs[TILE_DESTROYABLE_0].top_texture;
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_DESTROYABLE].tooltip = "Destroyable Tile"_sv;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_HEALS].icon = sprite_from_texture_index(
         texture_index_by_name(
             ITEM_HEALTH_TEXTURE));
@@ -239,13 +275,15 @@ int main(void)
     // SOUND END //////////////////////////////
 
     game.reset_entities();
-    char filepath[256];
+
+    auto room_files = load_room_files_from_dir("./assets/rooms/");
+
     const int PADDING = 1;
     for (int y = 0; y < 10; ++y) {
         for (int x = 0; x < 10; ++x) {
-            snprintf(filepath, sizeof(filepath), "assets/rooms/room-%d.bin", rand() % 3);
-            auto coord = vec2(x * (ROOM_WIDTH + PADDING), y * (ROOM_HEIGHT + PADDING));
-            game.grid.load_room_from_file(filepath, coord);
+            const auto coord = vec2(x * (ROOM_WIDTH + PADDING), y * (ROOM_HEIGHT + PADDING));
+            const size_t room_index = rand() % room_files.size;
+            game.grid.load_room_from_file(room_files.data[room_index].data, coord);
             game.add_camera_lock(rect(coord, ROOM_WIDTH, ROOM_HEIGHT));
         }
     }

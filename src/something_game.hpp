@@ -2,10 +2,14 @@
 #define SOMETHING_GAME_HPP_
 
 #include "something_console.hpp"
+#include "something_particles.hpp"
+#include "something_texture.hpp"
+#include "something_background.hpp"
 
 enum Debug_Toolbar_Button
 {
     DEBUG_TOOLBAR_TILES = 0,
+    DEBUG_TOOLBAR_DESTROYABLE,
     DEBUG_TOOLBAR_HEALS,
     DEBUG_TOOLBAR_ENEMIES,
     DEBUG_TOOLBAR_COUNT
@@ -64,17 +68,24 @@ const size_t PROJECTILES_COUNT = 69;
 const size_t ITEMS_COUNT = 69;
 const size_t CAMERA_LOCKS_CAPACITY = 200;
 const size_t ROOM_ROW_COUNT = 8;
+const size_t FPS_BARS_COUNT = 256;
 
 struct Game
 {
     bool quit;
     bool debug;
     bool step_debug;
+    bool bfs_debug;
+    bool fps_debug;
+    float frame_delays[FPS_BARS_COUNT];
+    size_t frame_delays_begin;
+
     Vec2f collision_probe;
     Vec2f mouse_position;
     Vec2i original_mouse_position;
     Maybe<Projectile_Index> tracking_projectile;
-    Debug_Draw_State state;
+    Debug_Draw_State draw_state;
+    Tile draw_tile;
     Camera camera;
     Sample_Mixer mixer;
     const Uint8 *keyboard;
@@ -106,13 +117,16 @@ struct Game
     Recti camera_locks[CAMERA_LOCKS_CAPACITY];
     size_t camera_locks_count;
 
+    Background background;
+
     void add_camera_lock(Recti rect);
 
     // Whole Game State
     void update(float dt);
     void render(SDL_Renderer *renderer);
     void handle_event(SDL_Event *event);
-    void render_debug_overlay(SDL_Renderer *renderer, size_t *fps);
+    void render_debug_overlay(SDL_Renderer *renderer, size_t fps);
+    void render_fps_overlay(SDL_Renderer *renderer);
 
     // Entities of the Game
     void reset_entities();
@@ -131,6 +145,7 @@ struct Game
 
     // Items of the Game
     void spawn_health_at_mouse();
+    int get_rooms_count(void);
 };
 
 #endif  // SOMETHING_GAME_HPP_

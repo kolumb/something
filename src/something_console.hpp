@@ -2,61 +2,49 @@
 #define SOMETHING_CONSOLE_HPP_
 
 #include "something_select_popup.hpp"
-
-const size_t CONSOLE_ROWS = 1024;
-const size_t CONSOLE_COLUMNS = 256;
+#include "something_edit_field.hpp"
 
 struct Game;
 
 struct Console
 {
-    struct Selection
+    struct History
     {
-        size_t begin;
-        size_t end;
+        char entries[CONSOLE_HISTORY_CAPACITY][CONSOLE_COLUMNS];
+        size_t entry_sizes[CONSOLE_HISTORY_CAPACITY];
+        // TODO(#199): try to organize history as end+count instead of begin+count
+        int begin;
+        int count;
+        int cursor;
 
-        bool is_empty() const
-        {
-            return size() == 0;
-        }
-
-        size_t size() const
-        {
-            return end - begin;
-        }
+        void push(String_View entry);
+        void up();
+        void down();
+        int current();
     };
 
     bool enabled;
-    float a;
+    float slide_position;
 
     char rows[CONSOLE_ROWS][CONSOLE_COLUMNS];
     size_t rows_count[CONSOLE_ROWS];
 
     size_t begin;
     size_t count;
+    size_t scroll;
 
-    char clipboard_buffer[CONSOLE_COLUMNS + 1];
-    char edit_field[CONSOLE_COLUMNS];
-    size_t edit_field_size;
-    size_t edit_field_cursor;
-    size_t edit_field_selection_begin;
-    Select_Popup popup;
-    bool popup_enabled;
+    History history;
 
-    Selection get_selection() const;
+    Edit_Field edit_field;
+    bool completion_popup_enabled;
+    Select_Popup completion_popup;
 
     void render(SDL_Renderer *renderer, Bitmap_Font *font);
     void update(float dt);
     void toggle();
 
     void start_autocompletion();
-    void cursor_left(bool selection);
-    void cursor_right(bool selection);
-    void insert_cstr(const char *cstr);
-    void insert_sv(String_View sv);
-    void backspace_char();
-    void delete_char();
-    void delete_selection(Selection selection);
+
 
     template <typename ... Types>
     void println(Types... args)

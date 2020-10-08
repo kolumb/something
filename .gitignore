@@ -10,3 +10,4 @@ config_types.hpp
 index.js
 index.data
 index.wasm
+*.exe
