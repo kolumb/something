@@ -34,13 +34,13 @@ $ something.debug
 ### Windows build with MinGW
 ```console
 $ set __MINGW32__=1 && mingw32-make -B config_types.hpp && mingw32-make -B baked_config.hpp
-$ emsdk_env
-$ ./build.bat
+$ emsdk_env.bat
+$ build.bat
 ```
 ### Build on UNIX-like system
 ```console
 $ make -B config_types.hpp && make -B baked_config.hpp
-$ emsdk_env
+$ . /path/to/emsdk_env.sh
 $ ./build.sh
 ```
 ### Run
