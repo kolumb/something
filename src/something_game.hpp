@@ -87,6 +87,7 @@ struct Game
     bool step_debug;
     bool bfs_debug;
     bool fps_debug;
+    bool holding_down_mouse;
     float frame_delays[FPS_BARS_COUNT];
     size_t frame_delays_begin;
 
@@ -146,6 +147,8 @@ struct Game
     void entity_resolve_collision(Entity_Index entity_index);
     void spawn_enemy_at(Vec2f pos);
     void exploded_tile_check_for_collision(Exploded_Tile_Index exploded_tile_index);
+    Vec2i where_entity_can_place_block(Entity_Index index, bool *can_place = nullptr);
+    bool does_tile_contain_entity(Vec2i tile_coord);
 
     // Projectiles of the Game
     void spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter);
@@ -158,6 +161,9 @@ struct Game
     // Items of the Game
     void spawn_health_at_mouse();
     int get_rooms_count(void);
+
+    // Player related operations
+    void render_player_hud(SDL_Renderer *renderer);
 };
 
 #endif  // SOMETHING_GAME_HPP_

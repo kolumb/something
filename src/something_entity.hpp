@@ -25,6 +25,11 @@ enum class Alive_State
 
 const size_t JUMP_SAMPLES_CAPACITY = 2;
 
+enum class Weapon
+{
+    Gun,
+    Dirt_Block
+};
 
 struct Entity
 {
@@ -55,6 +60,8 @@ struct Entity
     float flash_alpha;
     Direction walking_direction;
     bool knows_about_player;
+    Weapon current_weapon;
+    size_t dirt_blocks_count;
 
     Frame_Animat idle;
     Frame_Animat walking;

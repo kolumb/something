@@ -4,6 +4,12 @@ template <typename T>
 struct Vec2
 {
     T x, y;
+
+    template <typename Function>
+    Vec2<T> map(Function f)
+    {
+        return {f(x), f(y)};
+    }
 };
 
 using Vec2f = Vec2<float>;
@@ -161,6 +167,12 @@ constexpr Rect<T> rect(Vec2<T> pos, T w, T h)
     return {pos.x, pos.y, w, h};
 }
 
+template <typename T>
+constexpr Rect<T> rect(Vec2<T> pos, Vec2<T> size)
+{
+    return {pos.x, pos.y, size.x, size.y};
+}
+
 SDL_Rect rectf_for_sdl(Rectf rect)
 {
     return {(int) floorf(rect.x),
@@ -181,9 +193,14 @@ Vec2<int> vec_cast(Vec2<float> v)
     return { (int) floorf(v.x), (int) floorf(v.y) };
 }
 
+float length(Vec2<float> a)
+{
+    return sqrtf(sqr_len(a));
+}
+
 Vec2<float> normalize(Vec2<float> a)
 {
-    return a / sqrtf(sqr_len(a));
+    return a / length(a);
 }
 
 template <typename T> T sgn(T val) {

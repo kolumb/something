@@ -94,6 +94,10 @@ void Game::handle_event(SDL_Event *event)
         case Debug_Draw_State::Idle:
         default: {}
         }
+
+        if (entities[PLAYER_ENTITY_INDEX].current_weapon == Weapon::Dirt_Block && holding_down_mouse) {
+            entity_shoot({PLAYER_ENTITY_INDEX});
+        }
     } break;
 
     case SDL_MOUSEBUTTONDOWN: {
@@ -172,9 +176,11 @@ void Game::handle_event(SDL_Event *event)
         } break;
 
         case SDL_BUTTON_LEFT: {
-            if (!debug_toolbar.handle_click_at({(float)event->button.x, (float)event->button.y})) {
+            if (!debug_toolbar.handle_click_at({(float) event->button.x, (float) event->button.y})) {
                 entity_shoot({PLAYER_ENTITY_INDEX});
             }
+
+            holding_down_mouse = true;
         } break;
         }
     } break;
@@ -183,6 +189,10 @@ void Game::handle_event(SDL_Event *event)
         switch (event->button.button) {
         case SDL_BUTTON_RIGHT: {
             draw_state = Debug_Draw_State::Idle;
+        } break;
+
+        case SDL_BUTTON_LEFT: {
+            holding_down_mouse = false;
         } break;
         }
     } break;
@@ -195,6 +205,14 @@ void Game::handle_event(SDL_Event *event)
         switch (event->type) {
         case SDL_KEYDOWN: {
             switch (event->key.keysym.sym) {
+            case SDLK_1: {
+                entities[PLAYER_ENTITY_INDEX].current_weapon = Weapon::Gun;
+            } break;
+
+            case SDLK_2: {
+                entities[PLAYER_ENTITY_INDEX].current_weapon = Weapon::Dirt_Block;
+            } break;
+
             case SDLK_SPACE: {
                 if (!event->key.repeat) {
                     entity_jump({PLAYER_ENTITY_INDEX});
@@ -437,6 +455,24 @@ void Game::render(SDL_Renderer *renderer)
         entities[i].render(renderer, camera);
     }
 
+    switch (entities[PLAYER_ENTITY_INDEX].current_weapon) {
+    case Weapon::Dirt_Block: {
+        bool can_place = false;
+        auto target_tile = where_entity_can_place_block({PLAYER_ENTITY_INDEX}, &can_place);
+
+        can_place = can_place && entities[PLAYER_ENTITY_INDEX].dirt_blocks_count > 0;
+
+        tile_defs[TILE_DESTROYABLE_0].top_texture.render(
+            renderer,
+            rect(camera.to_screen(vec2((float) target_tile.x, (float) target_tile.y) * TILE_SIZE), TILE_SIZE, TILE_SIZE),
+            SDL_FLIP_NONE,
+            can_place ? CAN_PLACE_DIRT_BLOCK_COLOR : CANNOT_PLACE_DIRT_BLOCK_COLOR);
+    } break;
+
+    case Weapon::Gun: {
+    } break;
+    }
+
     render_projectiles(renderer, camera);
 
     for (size_t i = 0; i < ITEMS_COUNT; ++i) {
@@ -455,6 +491,8 @@ void Game::render(SDL_Renderer *renderer)
         render_fps_overlay(renderer);
     }
 
+    render_player_hud(renderer);
+
     popup.render(renderer);
     console.render(renderer, &debug_font);
 }
@@ -464,19 +502,62 @@ void Game::entity_shoot(Entity_Index entity_index)
     assert(entity_index.unwrap < ENTITIES_COUNT);
     Entity *entity = &entities[entity_index.unwrap];
 
-    if (entity->state != Entity_State::Alive) return;
-    if (entity->cooldown_weapon > 0) return;
+    if (entity->state == Entity_State::Alive) {
+        switch (entity->current_weapon) {
+        case Weapon::Gun: {
+            if (entity->cooldown_weapon <= 0) {
+                spawn_projectile(
+                    entity->pos,
+                    normalize(entity->gun_dir) * PROJECTILE_SPEED,
+                    entity_index);
+                entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON;
 
-    const float PROJECTILE_SPEED = 1200.0f;
+                mixer.play_sample(entity->shoot_sample);
+            }
+        } break;
 
-    spawn_projectile(
-        entity->pos,
-        entity->gun_dir * PROJECTILE_SPEED,
-        entity_index);
-    entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON;
-
-    mixer.play_sample(entity->shoot_sample);
+        case Weapon::Dirt_Block: {
+            // TODO(#222): dirt blocks must not be placed on the player
+            bool can_place = false;
+            auto target_tile = where_entity_can_place_block(entity_index, &can_place);
+            if (can_place && entity->dirt_blocks_count > 0) {
+                grid.set_tile(target_tile, TILE_DESTROYABLE_0);
+                entity->dirt_blocks_count -= 1;
+            }
+        } break;
+        }
+    }
 }
+
+bool Game::does_tile_contain_entity(Vec2i tile_coord)
+{
+    Rectf tile_rect = grid.rect_of_tile(tile_coord);
+
+    for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
+        if (entities[i].state == Entity_State::Alive && rects_overlap(tile_rect, entities[i].hitbox_world())) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Vec2i Game::where_entity_can_place_block(Entity_Index index, bool *can_place)
+{
+    Entity *entity = &entities[index.unwrap];
+    const auto allowed_length = min(length(entity->gun_dir), DIRT_BLOCK_PLACEMENT_PROXIMITY);
+    const auto allowed_target = entity->pos + allowed_length *normalize(entity->gun_dir);
+    const auto target_tile = grid.abs_to_tile_coord(allowed_target);
+
+    if (can_place) {
+        *can_place = grid.get_tile(target_tile) == TILE_EMPTY &&
+            grid.a_sees_b(entity->pos, grid.abs_center_of_tile(target_tile)) &&
+            !does_tile_contain_entity(target_tile);
+    }
+
+    return target_tile;
+}
+
 
 void Game::entity_jump(Entity_Index entity_index)
 {
@@ -852,4 +933,29 @@ int Game::get_rooms_count(void)
 
     closedir(rooms_dir);
     return result;
+}
+
+void Game::render_player_hud(SDL_Renderer *renderer)
+{
+    char buffer[256];
+    String_Buffer sbuffer = {};
+    sbuffer.capacity = sizeof(buffer);
+    sbuffer.data = buffer;
+
+    sprintln(&sbuffer, "Dirt blocks: ", entities[PLAYER_ENTITY_INDEX].dirt_blocks_count);
+
+    auto hud_position = vec2(PLAYER_HUD_MARGIN, PLAYER_HUD_MARGIN);
+    auto font_size = vec2(PLAYER_HUD_FONT_SIZE, PLAYER_HUD_FONT_SIZE);
+    auto board_rect =
+        rect(
+            hud_position,
+            debug_font.text_size(font_size, buffer) + 2.0f * vec2(PLAYER_HUD_PADDING, PLAYER_HUD_PADDING));
+    fill_rect(renderer, board_rect, PLAYER_HUD_BACKGROUND_COLOR);
+
+    debug_font.render(
+        renderer,
+        hud_position + vec2(PLAYER_HUD_PADDING, PLAYER_HUD_PADDING),
+        font_size,
+        PLAYER_HUD_FONT_COLOR,
+        buffer);
 }
