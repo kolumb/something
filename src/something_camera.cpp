@@ -5,6 +5,7 @@ struct Camera
 {
     Vec2f pos;
     Vec2f vel;
+    float shake;
 
     Vec2f to_screen(Vec2f world_pos)
     {
@@ -23,6 +24,14 @@ struct Camera
 
     void update(float delta_time)
     {
-        pos += vel * delta_time;
+        if (shake > 0.001f) {
+            float angle = rand_float_range(0, PI * 2);
+            auto shake_vec = vec2(cos(angle), sin(angle)) * shake;
+            shake *= CAMERA_SHAKE_FADE_OUT;
+            pos += vel * delta_time + shake_vec;
+        } else {
+            pos += vel * delta_time;
+        }
     }
 };
+

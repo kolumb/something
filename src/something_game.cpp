@@ -141,6 +141,7 @@ void Game::handle_event(SDL_Event *event)
                 }
             } else {
                 time_bomb = mouse_position;
+                camera.shake = CAMERA_SHAKE_ON_BOOM;
                 Vec2i mouse_tile = grid.abs_to_tile_coord(mouse_position);
                 const int r = EXPLOSION_RADIUS_IN_TILES;
                 size_t search_index = 0;
@@ -363,6 +364,9 @@ void Game::update(float dt)
             if (rect_contains_vec2(entity->hitbox_world(), projectile->pos)) {
                 projectile->kill();
                 entity->lives -= ENTITY_PROJECTILE_DAMAGE;
+                if (entity_index == PLAYER_ENTITY_INDEX) {
+                    camera.shake = CAMERA_SHAKE_ON_DAMAGE;
+                }
 
                 mixer.play_sample(damage_enemy_sample);
                 if (entity->lives <= 0) {
