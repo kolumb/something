@@ -204,7 +204,7 @@ void Entity::update(float dt, Sample_Mixer *mixer, Tile_Grid *grid)
         vel.y += ENTITY_GRAVITY * dt;
 
         const float ENTITY_DECEL = ENTITY_SPEED * ENTITY_DECEL_FACTOR;
-        const float ENTITY_STOP_THRESHOLD = 100.0f;
+        const float ENTITY_STOP_THRESHOLD = 0.01f;
         if (fabs(vel.x) > ENTITY_STOP_THRESHOLD) {
             vel.x -= sgn(vel.x) * ENTITY_DECEL * dt;
         } else {

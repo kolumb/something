@@ -140,6 +140,7 @@ void Game::handle_event(SDL_Event *event)
                     }
                 }
             } else {
+                time_bomb = mouse_position;
                 Vec2i mouse_tile = grid.abs_to_tile_coord(mouse_position);
                 const int r = EXPLOSION_RADIUS_IN_TILES;
                 size_t search_index = 0;
@@ -326,13 +327,13 @@ void Game::update(float dt)
 
     // Update All Exploded Tiles //////////////////////////////
     for (size_t i = 0; i < EXPLODED_TILES_COUNT; ++i) {
-        exploded_tiles[i].update(dt);
+        exploded_tiles[i].update(apply_time_bomb(dt, exploded_tiles[i].pos));
         exploded_tile_check_for_collision({i});
     }
 
     // Update All Entities //////////////////////////////
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
-        entities[i].update(dt, &mixer, &grid);
+        entities[i].update(apply_time_bomb(dt, entities[i].pos), &mixer, &grid);
         entity_resolve_collision({i});
         entities[i].has_jumped = false;
     }
@@ -342,7 +343,7 @@ void Game::update(float dt)
 
     // Update Items //////////////////////////////
     for (size_t i = 0; i < ITEMS_COUNT; ++i) {
-        items[i].update(dt);
+        items[i].update(apply_time_bomb(dt, items[i].pos));
     }
 
     // Entities/Projectiles interaction //////////////////////////////
@@ -829,8 +830,9 @@ void Game::update_projectiles(float dt)
     for (size_t i = 0; i < PROJECTILES_COUNT; ++i) {
         switch (projectiles[i].state) {
         case Projectile_State::Active: {
-            projectiles[i].active_animat.update(dt);
-            projectiles[i].pos += projectiles[i].vel * dt;
+            float new_dt = apply_time_bomb(dt, projectiles[i].pos);
+            projectiles[i].active_animat.update(new_dt);
+            projectiles[i].pos += projectiles[i].vel * new_dt;
 
             auto tile = grid.tile_at_abs(projectiles[i].pos);
             if (tile && tile_defs[*tile].is_collidable) {
@@ -842,7 +844,7 @@ void Game::update_projectiles(float dt)
                 }
             }
 
-            projectiles[i].lifetime -= dt;
+            projectiles[i].lifetime -= new_dt;
 
             if (projectiles[i].lifetime <= 0.0f) {
                 projectiles[i].kill();
@@ -850,7 +852,7 @@ void Game::update_projectiles(float dt)
         } break;
 
         case Projectile_State::Poof: {
-            projectiles[i].poof_animat.update(dt);
+            projectiles[i].poof_animat.update(apply_time_bomb(dt, projectiles[i].pos));
             if (projectiles[i].poof_animat.frame_current ==
                 (projectiles[i].poof_animat.frame_count - 1)) {
                 projectiles[i].state = Projectile_State::Ded;
@@ -958,4 +960,8 @@ void Game::render_player_hud(SDL_Renderer *renderer)
         font_size,
         PLAYER_HUD_FONT_COLOR,
         buffer);
+}
+
+float Game::apply_time_bomb(float dt, Vec2<float> pos) {
+    return dt * clamp(sqr_dist(pos, time_bomb) / TIME_BOMB_RADIUS, 0.0001f, 1.0f);
 }

@@ -97,6 +97,7 @@ struct Game
     Maybe<Projectile_Index> tracking_projectile;
     Debug_Draw_State draw_state;
     Tile draw_tile;
+    Vec2f time_bomb;
     Camera camera;
     Sample_Mixer mixer;
     const Uint8 *keyboard;
@@ -164,6 +165,7 @@ struct Game
 
     // Player related operations
     void render_player_hud(SDL_Renderer *renderer);
+    float apply_time_bomb(float dt, Vec2<float> pos);
 };
 
 #endif  // SOMETHING_GAME_HPP_
