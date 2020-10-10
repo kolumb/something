@@ -449,6 +449,8 @@ void Game::render(SDL_Renderer *renderer)
             lock);
     }
 
+    render_time_bomb_radius(renderer);
+
     grid.render(renderer, camera, lock);
 
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
@@ -962,6 +964,52 @@ void Game::render_player_hud(SDL_Renderer *renderer)
         buffer);
 }
 
-float Game::apply_time_bomb(float dt, Vec2<float> pos) {
+void Game::render_time_bomb_radius(SDL_Renderer *renderer)
+{
+    sec(SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255));
+    draw_circle(renderer, camera.to_screen(time_bomb), floor(sqrt(TIME_BOMB_RADIUS)));
+}
+
+float Game::apply_time_bomb(float dt, Vec2<float> pos)
+{
     return dt * clamp(sqr_dist(pos, time_bomb) / TIME_BOMB_RADIUS, 0.0001f, 1.0f);
+}
+
+// https://stackoverflow.com/questions/38334081/howto-draw-circles-arcs-and-vector-graphics-in-sdl
+void Game::draw_circle(SDL_Renderer * renderer, Vec2<float> centre, int radius)
+{
+   const int diameter = (radius * 2);
+
+   int x = (radius - 1);
+   int y = 0;
+   int tx = 1;
+   int ty = 1;
+   int error = (tx - diameter);
+
+   while (x >= y)
+   {
+      //  Each of the following renders an octant of the circle
+      SDL_RenderDrawPoint(renderer, centre.x + x, centre.y - y);
+      SDL_RenderDrawPoint(renderer, centre.x + x, centre.y + y);
+      SDL_RenderDrawPoint(renderer, centre.x - x, centre.y - y);
+      SDL_RenderDrawPoint(renderer, centre.x - x, centre.y + y);
+      SDL_RenderDrawPoint(renderer, centre.x + y, centre.y - x);
+      SDL_RenderDrawPoint(renderer, centre.x + y, centre.y + x);
+      SDL_RenderDrawPoint(renderer, centre.x - y, centre.y - x);
+      SDL_RenderDrawPoint(renderer, centre.x - y, centre.y + x);
+
+      if (error <= 0)
+      {
+         ++y;
+         error += ty;
+         ty += 2;
+      }
+
+      if (error > 0)
+      {
+         --x;
+         tx += 2;
+         error += (tx - diameter);
+      }
+   }
 }

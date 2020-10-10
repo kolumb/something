@@ -165,7 +165,9 @@ struct Game
 
     // Player related operations
     void render_player_hud(SDL_Renderer *renderer);
+    void render_time_bomb_radius(SDL_Renderer *renderer);
     float apply_time_bomb(float dt, Vec2<float> pos);
+    void draw_circle(SDL_Renderer * renderer, Vec2<float> centre, int radius);
 };
 
 #endif  // SOMETHING_GAME_HPP_
