@@ -144,12 +144,14 @@ void Game::handle_event(SDL_Event *event)
                 camera.shake = CAMERA_SHAKE_ON_BOOM;
                 for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
                     auto &entity =  entities[i];
-                    auto dist_from_epicenter_sqr = sqr_dist(mouse_position, entity.pos);
-                    if(dist_from_epicenter_sqr < EXPLOSION_RADIUS_SQR) {
-                        entity.lives -= clamp((int) (100 * EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr), 0, 100);
-                        if (entity.lives <= 0) {
-                            entity.kill();
-                            mixer.play_sample(kill_enemy_sample);
+                    if (entity.state == Entity_State::Alive) {
+                        auto dist_from_epicenter_sqr = sqr_dist(mouse_position, entity.pos);
+                        if(dist_from_epicenter_sqr < EXPLOSION_RADIUS_SQR * 2) {
+                            entity.lives -= clamp((int) (EXPLOSION_DAMAGE * EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr), 0, 100);
+                            if (entity.lives <= 0) {
+                                entity.kill();
+                                mixer.play_sample(kill_enemy_sample);
+                            }
                         }
                     }
                 }
