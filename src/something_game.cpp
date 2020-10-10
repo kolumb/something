@@ -970,13 +970,13 @@ void Game::render_time_bomb_radius(SDL_Renderer *renderer)
     draw_circle(renderer, camera.to_screen(time_bomb), floor(sqrt(TIME_BOMB_RADIUS)));
 }
 
-float Game::apply_time_bomb(float dt, Vec2<float> pos)
+float Game::apply_time_bomb(float dt, Vec2f pos)
 {
     return dt * clamp(sqr_dist(pos, time_bomb) / TIME_BOMB_RADIUS, 0.0001f, 1.0f);
 }
 
 // https://stackoverflow.com/questions/38334081/howto-draw-circles-arcs-and-vector-graphics-in-sdl
-void Game::draw_circle(SDL_Renderer * renderer, Vec2<float> centre, int radius)
+void Game::draw_circle(SDL_Renderer * renderer, Vec2f centre, int radius)
 {
    const int diameter = (radius * 2);
 
