@@ -142,6 +142,17 @@ void Game::handle_event(SDL_Event *event)
             } else {
                 time_bomb = mouse_position;
                 camera.shake = CAMERA_SHAKE_ON_BOOM;
+                for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
+                    auto &entity =  entities[i];
+                    auto dist_from_epicenter_sqr = sqr_dist(mouse_position, entity.pos);
+                    if(dist_from_epicenter_sqr < EXPLOSION_RADIUS_SQR) {
+                        entity.lives -= clamp((int) (100 * EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr), 0, 100);
+                        if (entity.lives <= 0) {
+                            entity.kill();
+                            mixer.play_sample(kill_enemy_sample);
+                        }
+                    }
+                }
                 Vec2i mouse_tile = grid.abs_to_tile_coord(mouse_position);
                 const int r = EXPLOSION_RADIUS_IN_TILES;
                 size_t search_index = 0;
