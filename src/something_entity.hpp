@@ -62,6 +62,7 @@ struct Entity
     bool knows_about_player;
     Weapon current_weapon;
     size_t dirt_blocks_count;
+    size_t ice_blocks_count;
 
     Frame_Animat idle;
     Frame_Animat walking;
@@ -111,5 +112,6 @@ struct Entity
 
 Entity player_entity(Vec2f pos);
 Entity enemy_entity(Vec2f pos);
+Entity golem_entity(Vec2f pos);
 
 #endif  // SOMETHING_ENTITY_H_

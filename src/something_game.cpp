@@ -77,23 +77,10 @@ void Game::handle_event(SDL_Event *event)
         if (debug) {
             debug_toolbar.handle_mouse_hover(
                 vec_cast<float>(vec2(event->motion.x, event->motion.y)));
+            debug_toolbar.buttons[debug_toolbar.active_button].tool.handle_event(this, event);
         }
 
         grid.resolve_point_collision(&collision_probe);
-
-        Vec2i tile = vec_cast<int>(mouse_position / TILE_SIZE);
-        switch (draw_state) {
-        case Debug_Draw_State::Create: {
-            grid.set_tile(tile, draw_tile);
-        } break;
-
-        case Debug_Draw_State::Delete: {
-            grid.set_tile(tile, TILE_EMPTY);
-        } break;
-
-        case Debug_Draw_State::Idle:
-        default: {}
-        }
 
         if (entities[PLAYER_ENTITY_INDEX].current_weapon == Weapon::Dirt_Block && holding_down_mouse) {
             entity_shoot({PLAYER_ENTITY_INDEX});
@@ -108,36 +95,7 @@ void Game::handle_event(SDL_Event *event)
                     projectile_at_position(mouse_position);
 
                 if (!tracking_projectile.has_value) {
-                    switch (debug_toolbar.active_button) {
-                    case DEBUG_TOOLBAR_TILES:
-                    case DEBUG_TOOLBAR_DESTROYABLE: {
-                        if (debug_toolbar.active_button == DEBUG_TOOLBAR_TILES) {
-                            draw_tile = TILE_WALL;
-                        } else {
-                            draw_tile = TILE_DESTROYABLE_0;
-                        }
-
-                        Vec2i tile = vec_cast<int>(mouse_position / TILE_SIZE);
-
-                        if (grid.get_tile(tile) == TILE_EMPTY) {
-                            draw_state = Debug_Draw_State::Create;
-                            grid.set_tile(tile, draw_tile);
-                        } else {
-                            draw_state = Debug_Draw_State::Delete;
-                            grid.set_tile(tile, TILE_EMPTY);
-                        }
-                    } break;
-
-                    case DEBUG_TOOLBAR_HEALS: {
-                        spawn_health_at_mouse();
-                    } break;
-
-                    case DEBUG_TOOLBAR_ENEMIES: {
-                        spawn_enemy_at(mouse_position);
-                    } break;
-
-                    default: {}
-                    }
+                    debug_toolbar.buttons[debug_toolbar.active_button].tool.handle_event(this, event);
                 }
             } else {
                 time_bomb = mouse_position;
@@ -202,13 +160,13 @@ void Game::handle_event(SDL_Event *event)
 
     case SDL_MOUSEBUTTONUP: {
         switch (event->button.button) {
-        case SDL_BUTTON_RIGHT: {
-            draw_state = Debug_Draw_State::Idle;
-        } break;
-
         case SDL_BUTTON_LEFT: {
             holding_down_mouse = false;
         } break;
+        }
+
+        if (debug) {
+            debug_toolbar.buttons[debug_toolbar.active_button].tool.handle_event(this, event);
         }
     } break;
     }
@@ -383,6 +341,13 @@ void Game::update(float dt)
 
                 mixer.play_sample(damage_enemy_sample);
                 if (entity->lives <= 0) {
+                    for (size_t i = 0; i < entity->dirt_blocks_count; ++i) {
+                        const float ITEMS_DROP_PROXIMITY = 50.0f;
+                        auto random_vector = polar(
+                            ITEMS_DROP_PROXIMITY,
+                            rand_float_range(0, 2.0f * PI));
+                        spawn_dirt_block_item_at(entity->pos + random_vector);
+                    }
                     entity->kill();
                     mixer.play_sample(kill_enemy_sample);
                 } else {
@@ -396,7 +361,7 @@ void Game::update(float dt)
     // Entities/Items interaction
     for (size_t index = 0; index < ITEMS_COUNT; ++index) {
         auto item = items + index;
-        if (item->type == ITEM_HEALTH) {
+        if (item->type != ITEM_NONE) {
             for (size_t entity_index = 0;
                  entity_index < ENTITIES_COUNT;
                  ++entity_index)
@@ -405,10 +370,30 @@ void Game::update(float dt)
 
                 if (entity->state == Entity_State::Alive) {
                     if (rects_overlap(entity->hitbox_world(), item->hitbox_world())) {
-                        entity->lives = min(entity->lives + ITEM_HEALTH_POINTS, ENTITY_MAX_LIVES);
-                        entity->flash(ENTITY_HEAL_FLASH_COLOR);
-                        mixer.play_sample(item->sound);
-                        item->type = ITEM_NONE;
+                        switch (item->type) {
+                        case ITEM_NONE: {
+                            assert(0 && "unreachable");
+                        } break;
+
+                        case ITEM_HEALTH: {
+                            entity->lives = min(entity->lives + ITEM_HEALTH_POINTS, ENTITY_MAX_LIVES);
+                            entity->flash(ENTITY_HEAL_FLASH_COLOR);
+                            mixer.play_sample(item->sound);
+                            item->type = ITEM_NONE;
+                        } break;
+
+                        case ITEM_DIRT_BLOCK: {
+                            entity->dirt_blocks_count += 1;
+                            mixer.play_sample(item->sound);
+                            item->type = ITEM_NONE;
+                        } break;
+
+                        case ITEM_ICE_BLOCK: {
+                            entity->ice_blocks_count += 1;
+                            mixer.play_sample(item->sound);
+                            item->type = ITEM_NONE;
+                        } break;
+                        }
                         break;
                     }
                 }
@@ -893,7 +878,7 @@ Rectf Game::hitbox_of_projectile(Projectile_Index index)
             projectiles[index.unwrap].pos.y - PROJECTILE_TRACKING_PADDING * 0.5f,
             PROJECTILE_TRACKING_PADDING,
             PROJECTILE_TRACKING_PADDING
-            };
+    };
 }
 
 Maybe<Projectile_Index> Game::projectile_at_position(Vec2f position)
@@ -908,6 +893,32 @@ Maybe<Projectile_Index> Game::projectile_at_position(Vec2f position)
     }
 
     return {};
+}
+
+void Game::spawn_dirt_block_item_at(Vec2f pos)
+{
+    for (size_t i = 0; i < ITEMS_COUNT; ++i) {
+        if (items[i].type == ITEM_NONE) {
+            items[i] = make_dirt_block_item(pos);
+            break;
+        }
+    }
+}
+
+void Game::spawn_dirt_block_item_at_mouse()
+{
+    spawn_dirt_block_item_at(mouse_position);
+}
+
+void Game::spawn_item_at(Item item, Vec2f pos)
+{
+    item.pos = pos;
+    for (size_t i = 0; i < ITEMS_COUNT; ++i) {
+        if (items[i].type == ITEM_NONE) {
+            items[i] = item;
+            break;
+        }
+    }
 }
 
 void Game::spawn_health_at_mouse()
@@ -926,11 +937,32 @@ void Game::add_camera_lock(Recti rect)
     camera_locks[camera_locks_count++] = rect;
 }
 
+void Game::spawn_entity_at(Entity entity, Vec2f pos)
+{
+    entity.pos = pos;
+    for (size_t i = PLAYER_ENTITY_INDEX + ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
+        if (entities[i].state == Entity_State::Ded) {
+            entities[i] = entity;
+            break;
+        }
+    }
+}
+
 void Game::spawn_enemy_at(Vec2f pos)
 {
     for (size_t i = PLAYER_ENTITY_INDEX + ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
         if (entities[i].state == Entity_State::Ded) {
             entities[i] = enemy_entity(pos);
+            break;
+        }
+    }
+}
+
+void Game::spawn_golem_at(Vec2f pos)
+{
+    for (size_t i = PLAYER_ENTITY_INDEX + ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
+        if (entities[i].state == Entity_State::Ded) {
+            entities[i] = golem_entity(pos);
             break;
         }
     }

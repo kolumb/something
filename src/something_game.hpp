@@ -12,13 +12,11 @@ enum Debug_Toolbar_Button
     DEBUG_TOOLBAR_DESTROYABLE,
     DEBUG_TOOLBAR_HEALS,
     DEBUG_TOOLBAR_ENEMIES,
+    DEBUG_TOOLBAR_DIRT,
+    DEBUG_TOOLBAR_GOLEM,
+    DEBUG_TOOLBAR_ICE_BLOCK,
+    DEBUG_TOOLBAR_ICE_ITEM,
     DEBUG_TOOLBAR_COUNT
-};
-
-enum class Debug_Draw_State {
-    Idle = 0,
-    Create,
-    Delete
 };
 
 template <typename That>
@@ -143,8 +141,10 @@ struct Game
     void entity_shoot(Entity_Index entity_index);
     void entity_jump(Entity_Index entity_index);
     void entity_resolve_collision(Entity_Index entity_index);
+    void spawn_entity_at(Entity entity, Vec2f pos);
     void spawn_enemy_at(Vec2f pos);
     void exploded_tile_check_for_collision(Exploded_Tile_Index exploded_tile_index);
+    void spawn_golem_at(Vec2f pos);
     Vec2i where_entity_can_place_block(Entity_Index index, bool *can_place = nullptr);
     bool does_tile_contain_entity(Vec2i tile_coord);
 
@@ -157,7 +157,10 @@ struct Game
     Maybe<Projectile_Index> projectile_at_position(Vec2f position);
 
     // Items of the Game
+    void spawn_item_at(Item item, Vec2f pos);
     void spawn_health_at_mouse();
+    void spawn_dirt_block_item_at(Vec2f pos);
+    void spawn_dirt_block_item_at_mouse();
     int get_rooms_count(void);
 
     // Player related operations
