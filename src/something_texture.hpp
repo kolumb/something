@@ -6,6 +6,7 @@ const char *texture_files[] = {
     "./assets/sprites/fantasy_tiles.png",
     "./assets/sprites/spark1-sheet.png",
     "./assets/sprites/walking-12px-zoom.png",
+    "./assets/sprites/walking-ice-golem-48px.png",
     "./assets/sprites/64.png",
     "./assets/sprites/tsodinw.png",
     "./assets/sprites/parallax-forest-back-trees.png",

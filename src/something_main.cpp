@@ -174,6 +174,11 @@ int main(int argc, char *argv[])
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_GOLEM].tool.type = Tool_Type::Entity;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_GOLEM].tool.entity.entity = golem_entity(vec2(0.0f, 0.0f));
 
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_GOLEM].icon = frame_animat_by_name("./assets/animats/idle_ice_golem.txt"_sv).frames[0];
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_GOLEM].tooltip = "Add ice golem enemy"_sv;
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_GOLEM].tool.type = Tool_Type::Entity;
+    game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_GOLEM].tool.entity.entity = ice_golem_entity(vec2(0.0f, 0.0f));
+
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_BLOCK].icon = tile_defs[TILE_ICE].top_texture;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_BLOCK].tooltip = "Add ice blocks"_sv;
     game.debug_toolbar.buttons[DEBUG_TOOLBAR_ICE_BLOCK].tool.type = Tool_Type::Tile;

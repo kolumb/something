@@ -230,17 +230,19 @@ void Game::update(float dt)
     if (lock) {
         grid.bfs_to_tile(player_tile, lock);
     }
-
     if (!debug && lock) {
         Rectf lock_abs = rect_cast<float>(*lock) * TILE_SIZE;
         for (size_t i = ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
             auto &enemy =  entities[i];
             if (enemy.state == Entity_State::Alive) {
                 if (rect_contains_vec2(lock_abs, enemy.pos)) {
-                    if (grid.a_sees_b(enemy.pos, player.pos)) {
-
-                        if(!enemy.knows_about_player) {
-                            enemy.knows_about_player = true;
+                    const bool saw_player = grid.a_sees_b(enemy.pos, player.pos);
+                    auto enemy_tile = grid.abs_to_tile_coord(enemy.pos);
+                    if (!saw_player && !enemy.knows_about_player) {
+                        auto current_bfs_value = grid.bfs_trace[enemy_tile.y - lock->y][enemy_tile.x - lock->x];
+                        if(current_bfs_value > DETECTION_RANGE) {
+                            continue;
+                        } else {
                             for (size_t j = ENEMY_ENTITY_INDEX_OFFSET; j < ENTITIES_COUNT; ++j) {
                                 auto &enemy_in_room = entities[j];
                                 if (enemy_in_room.state == Entity_State::Alive) {
@@ -249,31 +251,19 @@ void Game::update(float dt)
                                     }
                                 }
                             }
+                            enemy.point_gun_at(player.pos);
                         }
-                        enemy.stop();
-                        enemy.point_gun_at(player.pos);
-                        entity_shoot({i});
                     } else {
-                        auto enemy_tile = grid.abs_to_tile_coord(enemy.pos);
-                        auto current_bfs_value = grid.bfs_trace[enemy_tile.y - lock->y][enemy_tile.x - lock->x];
-
-                        if(!enemy.knows_about_player) {
-                            if(current_bfs_value > DETECTION_RANGE) {
-                                continue;
-                            } else {
-                                for (size_t j = ENEMY_ENTITY_INDEX_OFFSET; j < ENTITIES_COUNT; ++j) {
-                                    auto &enemy_in_room = entities[j];
-                                    if (enemy_in_room.state == Entity_State::Alive) {
-                                        if (rect_contains_vec2(lock_abs, enemy_in_room.pos)) {
-                                            enemy_in_room.knows_about_player = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         auto next = grid.next_in_bfs(enemy_tile, lock);
                         if (next.has_value) {
+                            enemy.point_gun_at(player.pos);
+                            if (saw_player) {
+                                if(enemy.ice_blocks_count == 0) {
+                                    entity_shoot({i});
+                                } else if (sqr_len(enemy.pos - player.pos) < 10000.0f) {
+                                    entity_shoot({i});
+                                }
+                            }
                             auto d = next.unwrap - enemy_tile;
 
                             if (d.y < 0) {
@@ -963,6 +953,16 @@ void Game::spawn_golem_at(Vec2f pos)
     for (size_t i = PLAYER_ENTITY_INDEX + ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
         if (entities[i].state == Entity_State::Ded) {
             entities[i] = golem_entity(pos);
+            break;
+        }
+    }
+}
+
+void Game::spawn_ice_golem_at(Vec2f pos)
+{
+    for (size_t i = PLAYER_ENTITY_INDEX + ENEMY_ENTITY_INDEX_OFFSET; i < ENTITIES_COUNT; ++i) {
+        if (entities[i].state == Entity_State::Ded) {
+            entities[i] = ice_golem_entity(pos);
             break;
         }
     }

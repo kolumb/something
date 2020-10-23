@@ -10,12 +10,13 @@ enum Debug_Toolbar_Button
 {
     DEBUG_TOOLBAR_TILES = 0,
     DEBUG_TOOLBAR_DESTROYABLE,
-    DEBUG_TOOLBAR_HEALS,
-    DEBUG_TOOLBAR_ENEMIES,
-    DEBUG_TOOLBAR_DIRT,
-    DEBUG_TOOLBAR_GOLEM,
     DEBUG_TOOLBAR_ICE_BLOCK,
+    DEBUG_TOOLBAR_HEALS,
+    DEBUG_TOOLBAR_DIRT,
     DEBUG_TOOLBAR_ICE_ITEM,
+    DEBUG_TOOLBAR_ENEMIES,
+    DEBUG_TOOLBAR_GOLEM,
+    DEBUG_TOOLBAR_ICE_GOLEM,
     DEBUG_TOOLBAR_COUNT
 };
 
@@ -90,7 +91,6 @@ struct Game
     Vec2f mouse_position;
     Vec2i original_mouse_position;
     Maybe<Projectile_Index> tracking_projectile;
-    Debug_Draw_State draw_state;
     Tile draw_tile;
     Vec2f time_bomb;
     Camera camera;
@@ -145,6 +145,7 @@ struct Game
     void spawn_enemy_at(Vec2f pos);
     void exploded_tile_check_for_collision(Exploded_Tile_Index exploded_tile_index);
     void spawn_golem_at(Vec2f pos);
+    void spawn_ice_golem_at(Vec2f pos);
     Vec2i where_entity_can_place_block(Entity_Index index, bool *can_place = nullptr);
     bool does_tile_contain_entity(Vec2i tile_coord);
 
