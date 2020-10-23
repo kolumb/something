@@ -239,3 +239,8 @@ float rand_float_range(float low, float high)
     const auto r = (float)rand()/(float)(RAND_MAX);
     return low + r * (high - low);
 }
+
+Vec2f rand_polar()
+{
+    return polar(rand_float_range(0.0f, 1.0f), rand_float_range(0.0f, 2 * PI));
+}
