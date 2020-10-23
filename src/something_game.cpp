@@ -260,15 +260,17 @@ void Game::update(float dt)
                             enemy.point_gun_at(player.pos);
                         }
                     } else {
+                        if (saw_player && enemy.ice_blocks_count == 0) {
+                            enemy.point_gun_at(player.pos);
+                            entity_shoot({i});
+                            enemy.stop();
+                            continue;
+                        }
                         auto next = grid.next_in_bfs(enemy_tile, lock);
                         if (next.has_value) {
-                            enemy.point_gun_at(player.pos);
-                            if (saw_player) {
-                                if(enemy.ice_blocks_count == 0) {
-                                    entity_shoot({i});
-                                } else if (sqr_len(enemy.pos - player.pos) < 10000.0f) {
-                                    entity_shoot({i});
-                                }
+                            if(sqr_len(enemy.pos - player.pos) < 10000.0f) {
+                                enemy.point_gun_at(player.pos);
+                                entity_shoot({i});
                             }
                             auto d = next.unwrap - enemy_tile;
 
