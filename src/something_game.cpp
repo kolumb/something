@@ -1045,8 +1045,9 @@ void Game::render_player_hud(SDL_Renderer *renderer)
     sbuffer.capacity = sizeof(buffer);
     sbuffer.data = buffer;
 
-    sprintln(&sbuffer, "Dirt blocks: ", entities[PLAYER_ENTITY_INDEX].dirt_blocks_count,
-                      "\nIce blocks: ", entities[PLAYER_ENTITY_INDEX].ice_blocks_count);
+    sprintln(&sbuffer, "1) Gun: Infinity",
+                     "\n2) Dirt blocks: ", entities[PLAYER_ENTITY_INDEX].dirt_blocks_count,
+                     "\n3) Ice blocks: ",  entities[PLAYER_ENTITY_INDEX].ice_blocks_count);
 
     auto hud_position = vec2(PLAYER_HUD_MARGIN, PLAYER_HUD_MARGIN);
     auto font_size = vec2(PLAYER_HUD_FONT_SIZE, PLAYER_HUD_FONT_SIZE);
