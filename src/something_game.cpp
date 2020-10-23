@@ -338,6 +338,13 @@ void Game::update(float dt)
                             rand_float_range(0, 2.0f * PI));
                         spawn_dirt_block_item_at(entity->pos + random_vector);
                     }
+                    for (size_t i = 0; i < entity->ice_blocks_count; ++i) {
+                        const float ITEMS_DROP_PROXIMITY = 50.0f;
+                        auto random_vector = polar(
+                            ITEMS_DROP_PROXIMITY,
+                            rand_float_range(0, 2.0f * PI));
+                        spawn_ice_block_item_at(entity->pos + random_vector);
+                    }
                     entity->kill();
                     mixer.play_sample(kill_enemy_sample);
                 } else {
@@ -898,6 +905,21 @@ void Game::spawn_dirt_block_item_at(Vec2f pos)
 void Game::spawn_dirt_block_item_at_mouse()
 {
     spawn_dirt_block_item_at(mouse_position);
+}
+
+void Game::spawn_ice_block_item_at(Vec2f pos)
+{
+    for (size_t i = 0; i < ITEMS_COUNT; ++i) {
+        if (items[i].type == ITEM_NONE) {
+            items[i] = make_ice_block_item(pos);
+            break;
+        }
+    }
+}
+
+void Game::spawn_ice_block_item_at_mouse()
+{
+    spawn_ice_block_item_at(mouse_position);
 }
 
 void Game::spawn_item_at(Item item, Vec2f pos)
