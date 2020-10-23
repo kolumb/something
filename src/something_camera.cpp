@@ -26,7 +26,7 @@ struct Camera
     {
         if (shake > 0.001f) {
             float angle = rand_float_range(0, PI * 2);
-            auto shake_vec = vec2(cos(angle), sin(angle)) * shake;
+            auto shake_vec = polar(angle, shake);
             shake *= CAMERA_SHAKE_FADE_OUT;
             pos += vel * delta_time + shake_vec;
         } else {
