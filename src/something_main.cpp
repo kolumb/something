@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
     game.damage_enemy_sample      = sample_s16_by_name("./assets/sounds/Hurt_Old.wav"_sv);
     game.kill_enemy_sample        = sample_s16_by_name("./assets/sounds/Fallbig1.wav"_sv);
 
+    game.time_bomb_sample         = sample_s16_by_name("./assets/sounds/explosion1-48000-mono.wav"_sv);
     game.time_bomb = vec2(-10000.0f, -10000.0f);
 
 #ifndef SOMETHING_RELEASE

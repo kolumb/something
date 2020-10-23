@@ -107,6 +107,7 @@ struct Game
     Sample_S16 player_shoot_sample;
     Sample_S16 kill_enemy_sample;
     Sample_S16 damage_enemy_sample;
+    Sample_S16 time_bomb_sample;
 
     Frame_Animat projectile_active_animat;
     Frame_Animat projectile_poof_animat;
@@ -151,6 +152,7 @@ struct Game
 
     // Projectiles of the Game
     void spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter);
+    void set_time_bomb(void);
     int count_alive_projectiles(void);
     void render_projectiles(SDL_Renderer *renderer, Camera camera);
     void update_projectiles(float dt);

@@ -42,6 +42,7 @@ Sample_S16_File sample_s16_files[] = {
     {"./assets/sounds/pop-48000.wav", {}},
     {"./assets/sounds/Fallbig1.wav", {}},
     {"./assets/sounds/Hurt_Old.wav", {}},
+    {"./assets/sounds/explosion1-48000-mono.wav", {}},
 };
 const size_t sample_s16_files_count = sizeof(sample_s16_files) / sizeof(sample_s16_files[0]);
 

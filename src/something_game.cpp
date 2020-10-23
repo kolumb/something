@@ -99,54 +99,6 @@ void Game::handle_event(SDL_Event *event)
                 if (!tracking_projectile.has_value) {
                     debug_toolbar.buttons[debug_toolbar.active_button].tool.handle_event(this, event);
                 }
-            } else {
-                time_bomb = mouse_position;
-                camera.shake = CAMERA_SHAKE_ON_BOOM;
-                for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
-                    auto &entity =  entities[i];
-                    if (entity.state == Entity_State::Alive) {
-                        auto dist_from_epicenter_sqr = sqr_dist(mouse_position, entity.pos);
-                        if(dist_from_epicenter_sqr < EXPLOSION_RADIUS_SQR * 2) {
-                            entity.lives -= clamp((int) (EXPLOSION_DAMAGE * EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr), 0, 100);
-                            if (entity.lives <= 0) {
-                                entity.kill();
-                                mixer.play_sample(kill_enemy_sample);
-                            }
-                        }
-                    }
-                }
-                Vec2i mouse_tile = grid.abs_to_tile_coord(mouse_position);
-                const int r = EXPLOSION_RADIUS_IN_TILES;
-                size_t search_index = 0;
-                for (int y = -r; y <= r; ++y) {
-                    for (int x = -r; x <= r; ++x) {
-                        auto probe = vec2(x, y);
-                        // NOTE: Subtraction of r is needed for rounded corners (2 <= r <= 6).
-                        if(sqr_len(probe) < r*r-r) {
-                            Vec2i tile_coord = mouse_tile + probe;
-                            Tile tile = grid.get_tile(tile_coord);
-                            if(tile == TILE_EMPTY) continue;
-                            grid.set_tile(tile_coord, TILE_EMPTY);
-
-                            while (search_index < EXPLODED_TILES_COUNT) {
-                                if (exploded_tiles[search_index].state == Exploded_Tile_State::Ded) {
-                                    Vec2f tile_pos = vec_cast<float>(tile_coord) * TILE_SIZE;
-                                    Vec2f center_of_tile = tile_pos + vec2(0.5f * TILE_SIZE, 0.5f * TILE_SIZE);
-
-                                    exploded_tiles[search_index] = make_exploded_tile(tile_pos, tile, mouse_position);
-
-                                    Vec2f vec_from_epicenter = center_of_tile - mouse_position;
-                                    float dist_from_epicenter_sqr = sqr_len(vec_from_epicenter);
-                                    float power = EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr;
-                                    Vec2f impulse = vec_from_epicenter * clamp(power, 0.0f, MAX_EXPLOSION_IMPULSE);
-                                    exploded_tiles[search_index].vel = impulse * EXPLOSION_POWER;
-                                    break;
-                                }
-                                search_index++;
-                            }
-                        }
-                    }
-                }
             }
         } break;
 
@@ -190,6 +142,10 @@ void Game::handle_event(SDL_Event *event)
 
             case SDLK_3: {
                 entities[PLAYER_ENTITY_INDEX].current_weapon = Weapon::Ice_Block;
+            } break;
+
+            case SDLK_4: {
+                entities[PLAYER_ENTITY_INDEX].current_weapon = Weapon::Time_Bomb;
             } break;
 
             case SDLK_SPACE: {
@@ -487,7 +443,8 @@ void Game::render(SDL_Renderer *renderer)
             can_place ? CAN_PLACE_DIRT_BLOCK_COLOR : CANNOT_PLACE_DIRT_BLOCK_COLOR);
     } break;
 
-    case Weapon::Gun: {
+    case Weapon::Gun:
+    case Weapon::Time_Bomb: {
     } break;
     }
 
@@ -550,6 +507,14 @@ void Game::entity_shoot(Entity_Index entity_index)
             if (can_place && entity->ice_blocks_count > 0) {
                 grid.set_tile(target_tile, TILE_ICE);
                 entity->ice_blocks_count -= 1;
+            }
+        } break;
+
+        case Weapon::Time_Bomb: {
+            if (entity->cooldown_weapon <= 0) {
+                entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON * 5.0f;
+                set_time_bomb();
+                mixer.play_sample(time_bomb_sample);
             }
         } break;
         }
@@ -668,6 +633,56 @@ void Game::spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter)
             projectiles[i].active_animat = projectile_active_animat;
             projectiles[i].poof_animat = projectile_poof_animat;
             return;
+        }
+    }
+}
+
+void Game::set_time_bomb() {
+    time_bomb = mouse_position;
+    camera.shake = CAMERA_SHAKE_ON_BOOM;
+    for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
+        auto &entity =  entities[i];
+        if (entity.state == Entity_State::Alive) {
+            auto dist_from_epicenter_sqr = sqr_dist(mouse_position, entity.pos);
+            if(dist_from_epicenter_sqr < EXPLOSION_RADIUS_SQR * 2) {
+                entity.lives -= clamp((int) (EXPLOSION_DAMAGE * EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr), 0, 100);
+                if (entity.lives <= 0) {
+                    entity.kill();
+                    mixer.play_sample(kill_enemy_sample);
+                }
+            }
+        }
+    }
+    Vec2i mouse_tile = grid.abs_to_tile_coord(mouse_position);
+    const int r = EXPLOSION_RADIUS_IN_TILES;
+    size_t search_index = 0;
+    for (int y = -r; y <= r; ++y) {
+        for (int x = -r; x <= r; ++x) {
+            auto probe = vec2(x, y);
+            // NOTE: Subtraction of r is needed for rounded corners (2 <= r <= 6).
+            if(sqr_len(probe) < r*r-r) {
+                Vec2i tile_coord = mouse_tile + probe;
+                Tile tile = grid.get_tile(tile_coord);
+                if(tile == TILE_EMPTY) continue;
+                grid.set_tile(tile_coord, TILE_EMPTY);
+
+                while (search_index < EXPLODED_TILES_COUNT) {
+                    if (exploded_tiles[search_index].state == Exploded_Tile_State::Ded) {
+                        Vec2f tile_pos = vec_cast<float>(tile_coord) * TILE_SIZE;
+                        Vec2f center_of_tile = tile_pos + vec2(0.5f * TILE_SIZE, 0.5f * TILE_SIZE);
+
+                        exploded_tiles[search_index] = make_exploded_tile(tile_pos, tile, mouse_position);
+
+                        Vec2f vec_from_epicenter = center_of_tile - mouse_position;
+                        float dist_from_epicenter_sqr = sqr_len(vec_from_epicenter);
+                        float power = EXPLOSION_RADIUS_SQR / dist_from_epicenter_sqr;
+                        Vec2f impulse = vec_from_epicenter * clamp(power, 0.0f, MAX_EXPLOSION_IMPULSE);
+                        exploded_tiles[search_index].vel = impulse * EXPLOSION_POWER;
+                        break;
+                    }
+                    search_index++;
+                }
+            }
         }
     }
 }
@@ -1044,7 +1059,8 @@ void Game::render_player_hud(SDL_Renderer *renderer)
 
     sprintln(&sbuffer, "1) Gun: Infinity",
                      "\n2) Dirt blocks: ", entities[PLAYER_ENTITY_INDEX].dirt_blocks_count,
-                     "\n3) Ice blocks: ",  entities[PLAYER_ENTITY_INDEX].ice_blocks_count);
+                     "\n3) Ice blocks: ",  entities[PLAYER_ENTITY_INDEX].ice_blocks_count,
+                     "\n4) Time bombs: +1");
 
     auto hud_position = vec2(PLAYER_HUD_MARGIN, PLAYER_HUD_MARGIN);
     auto font_size = vec2(PLAYER_HUD_FONT_SIZE, PLAYER_HUD_FONT_SIZE);

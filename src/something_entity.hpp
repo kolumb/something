@@ -29,7 +29,8 @@ enum class Weapon
 {
     Gun,
     Dirt_Block,
-    Ice_Block
+    Ice_Block,
+    Time_Bomb
 };
 
 struct Entity
