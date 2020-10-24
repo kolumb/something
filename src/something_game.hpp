@@ -93,6 +93,8 @@ struct Game
     Maybe<Projectile_Index> tracking_projectile;
     Tile draw_tile;
     Vec2f time_bomb;
+
+    float time_bomb_radius;
     Particles time_bomb_particles;
     Particles dark_particles;
     Camera camera;

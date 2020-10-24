@@ -65,11 +65,11 @@ void Particles::push_sparkle(float impact)
     }
 }
 
-void Particles::push_dark()
+void Particles::push_dark(float dark_radius)
 {
     if (count < PARTICLES_CAPACITY) {
         const size_t j = (begin + count) % PARTICLES_CAPACITY;
-        velocities[j] = 455.0f * rand_polar();
+        velocities[j] = dark_radius * rand_polar();
         positions[j] = source - (velocities[j]);
         lifetimes[j] = PARTICLE_LIFETIME;
         sizes[j] = rand_float_range(PARTICLE_SIZE_LOW * 2.5f, PARTICLE_SIZE_HIGH * 3.5f);
@@ -119,7 +119,7 @@ void Particles::update(float dt, Tile_Grid *grid)
     }
 }
 
-void Particles::update_dark(float dt)
+void Particles::update_dark(float dt, float dark_radius)
 {
     for (size_t i = 0; i < count; ++i) {
         const size_t j = (begin + i) % PARTICLES_CAPACITY;
@@ -135,7 +135,7 @@ void Particles::update_dark(float dt)
     cooldown -= dt;
 
     if (cooldown <= 0.0f && state == Particles::EMITTING) {
-        push_dark();
+        push_dark(dark_radius);
         const float PARTICLE_COOLDOWN = 1.0f / PARTICLES_RATE;
         cooldown = PARTICLE_COOLDOWN;
     }

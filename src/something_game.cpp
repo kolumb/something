@@ -256,8 +256,12 @@ void Game::update(float dt)
         exploded_tiles[i].update(apply_time_bomb(dt, exploded_tiles[i].pos));
         exploded_tile_check_for_collision({i});
     }
-    dark_particles.update_dark(dt);
+    dark_particles.update_dark(dt, time_bomb_radius);
     time_bomb_particles.update(dt, &grid);
+    time_bomb_radius *= TIME_BOMB_COLLAPSE;
+    if(time_bomb_radius < MIN_TIME_BOMB_RADIUS) {
+        dark_particles.state = Particles::DISABLED;
+    }
 
     // Update All Entities //////////////////////////////
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
@@ -517,13 +521,8 @@ void Game::entity_shoot(Entity_Index entity_index)
         case Weapon::Time_Bomb: {
             if (entity->cooldown_weapon <= 0) {
                 entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON * 5.0f;
+                time_bomb_radius = MAX_TIME_BOMB_RADIUS;
                 set_time_bomb_at_mouse();
-                time_bomb_particles.source = mouse_position;
-                dark_particles.source = mouse_position;
-                dark_particles.state = Particles::EMITTING;
-                for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST * 20; ++i) {
-                    time_bomb_particles.push_sparkle(rand_float_range(PARTICLE_JUMP_VEL_LOW*4, PARTICLE_JUMP_VEL_HIGH*8));
-                }
                 mixer.play_sample(time_bomb_sample);
             }
         } break;
@@ -694,6 +693,12 @@ void Game::set_time_bomb_at_mouse() {
                 }
             }
         }
+    }
+    dark_particles.source = mouse_position;
+    dark_particles.state = Particles::EMITTING;
+    time_bomb_particles.source = mouse_position;
+    for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST * 20; ++i) {
+        time_bomb_particles.push_sparkle(rand_float_range(PARTICLE_JUMP_VEL_LOW*4, PARTICLE_JUMP_VEL_HIGH*8));
     }
 }
 
@@ -1090,5 +1095,9 @@ void Game::render_player_hud(SDL_Renderer *renderer)
 
 float Game::apply_time_bomb(float dt, Vec2f pos)
 {
-    return dt * clamp(sqr_dist(pos, time_bomb) / TIME_BOMB_RADIUS, 0.0001f, 1.0f);
+    if (time_bomb_radius > MIN_TIME_BOMB_RADIUS) {
+        return dt * clamp(sqr_dist(pos, time_bomb) / (time_bomb_radius * time_bomb_radius), 0.0001f, 1.0f);
+    } else {
+        return dt;
+    }
 }

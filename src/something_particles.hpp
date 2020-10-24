@@ -27,10 +27,10 @@ struct Particles
     void render(SDL_Renderer *renderer, Camera camera) const;
     void render_dark(SDL_Renderer *renderer, Camera camera) const;
     void update(float dt, Tile_Grid *grid);
-    void update_dark(float dt);
+    void update_dark(float dt, float dark_radius);
     void push(float impact);
     void push_sparkle(float impact);
-    void push_dark();
+    void push_dark(float dark_radius);
     void pop();
 };
 
