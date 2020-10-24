@@ -1,7 +1,7 @@
 #ifndef SOMETHING_PARTICLES_HPP_
 #define SOMETHING_PARTICLES_HPP_
 
-const size_t PARTICLES_CAPACITY = 1024;
+const size_t PARTICLES_CAPACITY = 2048;
 
 struct Particles
 {
@@ -25,9 +25,12 @@ struct Particles
     size_t count;
 
     void render(SDL_Renderer *renderer, Camera camera) const;
+    void render_dark(SDL_Renderer *renderer, Camera camera) const;
     void update(float dt, Tile_Grid *grid);
+    void update_dark(float dt);
     void push(float impact);
     void push_sparkle(float impact);
+    void push_dark();
     void pop();
 };
 

@@ -256,6 +256,7 @@ void Game::update(float dt)
         exploded_tiles[i].update(apply_time_bomb(dt, exploded_tiles[i].pos));
         exploded_tile_check_for_collision({i});
     }
+    dark_particles.update_dark(dt);
     time_bomb_particles.update(dt, &grid);
 
     // Update All Entities //////////////////////////////
@@ -408,7 +409,7 @@ void Game::render(SDL_Renderer *renderer)
             lock);
     }
 
-    render_time_bomb_radius(renderer);
+    dark_particles.render_dark(renderer, camera);
 
     grid.render(renderer, camera, lock);
 
@@ -518,7 +519,9 @@ void Game::entity_shoot(Entity_Index entity_index)
                 entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON * 5.0f;
                 set_time_bomb_at_mouse();
                 time_bomb_particles.source = mouse_position;
-                for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST * 100; ++i) {
+                dark_particles.source = mouse_position;
+                dark_particles.state = Particles::EMITTING;
+                for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST * 20; ++i) {
                     time_bomb_particles.push_sparkle(rand_float_range(PARTICLE_JUMP_VEL_LOW*4, PARTICLE_JUMP_VEL_HIGH*8));
                 }
                 mixer.play_sample(time_bomb_sample);
@@ -1085,52 +1088,7 @@ void Game::render_player_hud(SDL_Renderer *renderer)
         buffer);
 }
 
-void Game::render_time_bomb_radius(SDL_Renderer *renderer)
-{
-    sec(SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255));
-    draw_circle(renderer, camera.to_screen(time_bomb), floor(sqrt(TIME_BOMB_RADIUS)));
-}
-
 float Game::apply_time_bomb(float dt, Vec2f pos)
 {
     return dt * clamp(sqr_dist(pos, time_bomb) / TIME_BOMB_RADIUS, 0.0001f, 1.0f);
-}
-
-// https://stackoverflow.com/questions/38334081/howto-draw-circles-arcs-and-vector-graphics-in-sdl
-void Game::draw_circle(SDL_Renderer * renderer, Vec2f centre, int radius)
-{
-   const int diameter = (radius * 2);
-
-   int x = (radius - 1);
-   int y = 0;
-   int tx = 1;
-   int ty = 1;
-   int error = (tx - diameter);
-
-   while (x >= y)
-   {
-      //  Each of the following renders an octant of the circle
-      SDL_RenderDrawPoint(renderer, centre.x + x, centre.y - y);
-      SDL_RenderDrawPoint(renderer, centre.x + x, centre.y + y);
-      SDL_RenderDrawPoint(renderer, centre.x - x, centre.y - y);
-      SDL_RenderDrawPoint(renderer, centre.x - x, centre.y + y);
-      SDL_RenderDrawPoint(renderer, centre.x + y, centre.y - x);
-      SDL_RenderDrawPoint(renderer, centre.x + y, centre.y + x);
-      SDL_RenderDrawPoint(renderer, centre.x - y, centre.y - x);
-      SDL_RenderDrawPoint(renderer, centre.x - y, centre.y + x);
-
-      if (error <= 0)
-      {
-         ++y;
-         error += ty;
-         ty += 2;
-      }
-
-      if (error > 0)
-      {
-         --x;
-         tx += 2;
-         error += (tx - diameter);
-      }
-   }
 }
