@@ -3,6 +3,7 @@
 
 void Particles::render(SDL_Renderer *renderer, Camera camera) const
 {
+    sec(SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD));
     for (size_t i = 0; i < count; ++i) {
         const size_t j = (begin + i) % PARTICLES_CAPACITY;
         if (lifetimes[j] > 0.0f) {
@@ -14,6 +15,7 @@ void Particles::render(SDL_Renderer *renderer, Camera camera) const
                       {colors[j].r, colors[j].g, colors[j].b, colors[j].a * opacity});
         }
     }
+    sec(SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND));
 }
 
 
@@ -28,6 +30,22 @@ void Particles::push(float impact)
         // TODO(#187): implement HSL based generation of color for particles
         HSLA hsla = current_color;
         hsla.h += rand_float_range(0.0, 2.0 * PARTICLES_HUE_DEVIATION_DEGREE) - PARTICLES_HUE_DEVIATION_DEGREE;
+        colors[j] = hsla.to_rgba();
+        count += 1;
+    }
+}
+
+void Particles::push_sparkle(float impact)
+{
+    if (count < PARTICLES_CAPACITY) {
+        const size_t j = (begin + count) % PARTICLES_CAPACITY;
+        positions[j] = source;
+        velocities[j] = polar(impact, rand_float_range(0.0f, 2.0f * PI));
+        lifetimes[j] = PARTICLE_LIFETIME*0.15f + (j % 7) / 5.0f;
+        sizes[j] = rand_float_range(PARTICLE_SIZE_LOW * 1.5f, PARTICLE_SIZE_HIGH * 1.5f);
+        // TODO(#187): implement HSL based generation of color for particles
+        HSLA hsla = current_color;
+        hsla.h += rand_float_range(0.0f, 2.0f * PARTICLES_HUE_DEVIATION_DEGREE) - PARTICLES_HUE_DEVIATION_DEGREE;
         colors[j] = hsla.to_rgba();
         count += 1;
     }

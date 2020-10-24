@@ -126,6 +126,7 @@ int main(int argc, char *argv[])
 
     game.time_bomb_sample         = sample_s16_by_name("./assets/sounds/explosion1-48000-mono.wav"_sv);
     game.time_bomb = vec2(-10000.0f, -10000.0f);
+    game.time_bomb_particles.current_color = {18.0f, 1.0f, 0.6f, 0.8f};
 
 #ifndef SOMETHING_RELEASE
     {

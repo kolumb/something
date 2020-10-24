@@ -93,6 +93,7 @@ struct Game
     Maybe<Projectile_Index> tracking_projectile;
     Tile draw_tile;
     Vec2f time_bomb;
+    Particles time_bomb_particles;
     Camera camera;
     Sample_Mixer mixer;
     const Uint8 *keyboard;
@@ -152,7 +153,7 @@ struct Game
 
     // Projectiles of the Game
     void spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter);
-    void set_time_bomb(void);
+    void set_time_bomb_at_mouse(void);
     int count_alive_projectiles(void);
     void render_projectiles(SDL_Renderer *renderer, Camera camera);
     void update_projectiles(float dt);

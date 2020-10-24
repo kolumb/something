@@ -27,6 +27,7 @@ struct Particles
     void render(SDL_Renderer *renderer, Camera camera) const;
     void update(float dt, Tile_Grid *grid);
     void push(float impact);
+    void push_sparkle(float impact);
     void pop();
 };
 

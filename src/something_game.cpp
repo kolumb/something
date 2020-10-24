@@ -256,6 +256,7 @@ void Game::update(float dt)
         exploded_tiles[i].update(apply_time_bomb(dt, exploded_tiles[i].pos));
         exploded_tile_check_for_collision({i});
     }
+    time_bomb_particles.update(dt, &grid);
 
     // Update All Entities //////////////////////////////
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
@@ -461,6 +462,8 @@ void Game::render(SDL_Renderer *renderer)
             exploded_tiles[i].render(renderer, camera);
         }
     }
+    time_bomb_particles.render(renderer, camera);
+
     
     if (fps_debug) {
         render_fps_overlay(renderer);
@@ -513,7 +516,11 @@ void Game::entity_shoot(Entity_Index entity_index)
         case Weapon::Time_Bomb: {
             if (entity->cooldown_weapon <= 0) {
                 entity->cooldown_weapon = ENTITY_COOLDOWN_WEAPON * 5.0f;
-                set_time_bomb();
+                set_time_bomb_at_mouse();
+                time_bomb_particles.source = mouse_position;
+                for (int i = 0; i < ENTITY_JUMP_PARTICLE_BURST * 100; ++i) {
+                    time_bomb_particles.push_sparkle(rand_float_range(PARTICLE_JUMP_VEL_LOW*4, PARTICLE_JUMP_VEL_HIGH*8));
+                }
                 mixer.play_sample(time_bomb_sample);
             }
         } break;
@@ -637,7 +644,7 @@ void Game::spawn_projectile(Vec2f pos, Vec2f vel, Entity_Index shooter)
     }
 }
 
-void Game::set_time_bomb() {
+void Game::set_time_bomb_at_mouse() {
     time_bomb = mouse_position;
     camera.shake = CAMERA_SHAKE_ON_BOOM;
     for (size_t i = 0; i < ENTITIES_COUNT; ++i) {
